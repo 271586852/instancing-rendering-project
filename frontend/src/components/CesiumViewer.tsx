@@ -16,6 +16,9 @@ const CesiumViewer: React.ForwardRefRenderFunction<CesiumViewerHandles> = (props
   const viewerRef = useRef<Viewer | null>(null);
 
   useEffect(() => {
+    let statsContainer: HTMLDivElement | null = null;
+    let renderListener: (() => void) | undefined = undefined;
+
     if (cesiumContainerRef.current && !viewerRef.current) {
       const viewer = new Viewer(cesiumContainerRef.current, {
         animation: false,
@@ -41,12 +44,60 @@ const CesiumViewer: React.ForwardRefRenderFunction<CesiumViewerHandles> = (props
       });
 
       viewerRef.current = viewer;
+
+      // Display FPS and Draw Calls
+      statsContainer = document.createElement('div');
+      if (cesiumContainerRef.current) {
+        cesiumContainerRef.current.style.position = 'relative';
+        statsContainer.style.position = 'absolute';
+        statsContainer.style.top = '10px';
+        statsContainer.style.left = '10px';
+        statsContainer.style.padding = '5px 10px';
+        statsContainer.style.backgroundColor = 'rgba(40, 40, 40, 0.7)';
+        statsContainer.style.color = 'white';
+        statsContainer.style.borderRadius = '5px';
+        statsContainer.style.fontFamily = 'monospace';
+        statsContainer.style.zIndex = '1000';
+        cesiumContainerRef.current.appendChild(statsContainer);
+      }
+
+      let frameCount = 0;
+      let lastFpsUpdate = performance.now();
+
+      renderListener = () => {
+        frameCount++;
+        const now = performance.now();
+        const delta = now - lastFpsUpdate;
+
+        if (delta > 1000) {
+          const fps = Math.round((frameCount * 1000) / delta);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const drawCalls = (viewer.scene as any).frameState.commandList.length;
+
+          if (statsContainer) {
+            statsContainer.innerHTML = `FPS: ${fps}<br/>Draw Calls: ${drawCalls}`;
+          }
+
+          lastFpsUpdate = now;
+          frameCount = 0;
+        }
+      };
+      
+      viewer.scene.postRender.addEventListener(renderListener);
     }
 
     return () => {
+      const viewer = viewerRef.current;
       // Cleanup viewer on component unmount
-      if (viewerRef.current && !viewerRef.current.isDestroyed()) {
-        viewerRef.current.destroy();
+      if (viewer && !viewer.isDestroyed()) {
+        if (renderListener) {
+          viewer.scene.postRender.removeEventListener(renderListener);
+        }
+        if (statsContainer && cesiumContainerRef.current?.contains(statsContainer)) {
+          cesiumContainerRef.current.removeChild(statsContainer);
+        }
+        
+        viewer.destroy();
         viewerRef.current = null;
       }
     };
