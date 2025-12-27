@@ -30,13 +30,14 @@ body {
   position: relative;
 }
 
-/* Cesium 视口 - 全屏显示 */
+/* Cesium 视口 - 全屏显示，但需要为菜单栏留出空间 */
 .cesium-viewport {
   width: 100%;
   height: 100%;
   position: absolute;
   top: 0;
   left: 0;
+  /* 菜单栏会覆盖在顶部，Cesium 视图在下方 */
 }
 
 /* Instancing 面板 - 作为覆盖层 */

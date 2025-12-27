@@ -62,7 +62,7 @@ const CesiumViewer = forwardRef<CesiumViewerHandles, CesiumViewerProps>(
           <PerformanceStats
             viewer={viewer}
             containerRef={cesiumContainerRef}
-            position={performanceStatsPosition}
+            position={performanceStatsPosition || { bottom: '10px', left: '10px' }}
           />
         )}
       </div>

@@ -1,0 +1,248 @@
+/* 菜单栏容器 - 固定在顶部 */
+.menu-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background-color: #1e1e1e;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+  z-index: 200;
+}
+
+/* 菜单栏头部 */
+.menu-bar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  border-bottom: 1px solid #444;
+}
+
+.menu-bar-title {
+  font-size: 1.2em;
+  line-height: 1.1;
+  color: #646cff;
+  margin: 0;
+  border: none;
+  padding: 0;
+}
+
+.menu-bar-actions {
+  display: flex;
+  gap: 10px;
+}
+
+/* 菜单按钮 */
+.menu-button {
+  padding: 8px 16px;
+  background-color: #3e3e3e;
+  color: white;
+  border: 1px solid #555;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.9em;
+  transition: all 0.2s;
+}
+
+.menu-button:hover {
+  background-color: #555;
+  border-color: #646cff;
+}
+
+.menu-button.active {
+  background-color: #646cff;
+  border-color: #646cff;
+  color: white;
+}
+
+/* 右侧菜单面板 */
+.menu-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 400px;
+  height: 100%;
+  background-color: #1e1e1e;
+  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.5);
+  z-index: 150;
+  display: flex;
+  flex-direction: column;
+  animation: slideInRight 0.3s ease-out;
+}
+
+.menu-panel.closing {
+  animation: slideOutRight 0.3s ease-out;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideOutRight {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* 菜单面板头部 */
+.menu-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px 20px;
+  border-bottom: 1px solid #444;
+  background-color: #2a2a2a;
+}
+
+.menu-panel-title {
+  font-size: 1.1em;
+  line-height: 1.1;
+  color: #ccc;
+  margin: 0;
+  border: none;
+  padding: 0;
+}
+
+.menu-panel-close {
+  background: none;
+  border: none;
+  color: #aaa;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  transition: all 0.2s;
+}
+
+.menu-panel-close:hover {
+  background-color: #3e3e3e;
+  color: white;
+}
+
+/* 菜单面板内容 */
+.menu-panel-content {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  background-color: #1e1e1e;
+}
+
+/* Instancing 工具样式 */
+.instancing-tool {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* 3D Tiles 加载器样式 */
+.tiles-loader {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.tiles-loader h3 {
+  margin: 0 0 5px 0;
+  color: #ccc;
+  font-size: 1.1em;
+}
+
+.tiles-loader-description {
+  margin: 0;
+  color: #aaa;
+  font-size: 0.9em;
+}
+
+.tiles-input-group {
+  display: flex;
+  gap: 10px;
+}
+
+.tiles-url-input {
+  flex: 1;
+  padding: 10px;
+  background-color: #3e3e3e;
+  border: 1px solid #555;
+  color: white;
+  border-radius: 5px;
+  font-size: 1em;
+}
+
+.tiles-url-input:focus {
+  outline: none;
+  border-color: #646cff;
+}
+
+.tiles-url-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.tiles-load-button {
+  padding: 10px 20px;
+  background-color: #646cff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 1em;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.tiles-load-button:hover:not(:disabled) {
+  background-color: #535bf2;
+}
+
+.tiles-load-button:disabled {
+  background-color: #333;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.tiles-examples {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #444;
+}
+
+.tiles-examples h4 {
+  margin: 0 0 10px 0;
+  color: #aaa;
+  font-size: 0.9em;
+}
+
+.tiles-examples ul {
+  margin: 0;
+  padding-left: 20px;
+  color: #aaa;
+}
+
+.tiles-examples li {
+  margin-bottom: 5px;
+  font-size: 0.85em;
+}
+
+.tiles-examples code {
+  background-color: #1e1e1e;
+  padding: 2px 6px;
+  border-radius: 3px;
+  color: #87c5ff;
+  font-family: monospace;
+  font-size: 0.9em;
+}
+
