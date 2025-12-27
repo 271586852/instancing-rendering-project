@@ -18,11 +18,56 @@ body {
 }
 
 #root {
-  display: flex;
   width: 100vw;
   height: 100vh;
+  overflow: hidden;
 }
 
+/* 主页面容器 - 全屏 */
+.main-page {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+/* Cesium 视口 - 全屏显示 */
+.cesium-viewport {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+/* Instancing 面板 - 作为覆盖层 */
+.instancing-panel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 350px;
+  height: 100%;
+  background-color: #1e1e1e;
+  box-shadow: 2px 0 5px rgba(0,0,0,0.5);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.panel-header {
+  padding: 20px;
+  border-bottom: 1px solid #444;
+}
+
+.panel-content {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  flex: 1;
+}
+
+/* 兼容旧的 sidebar 类名（如果其他地方还在使用） */
 .sidebar {
   width: 350px;
   background-color: #1e1e1e;
