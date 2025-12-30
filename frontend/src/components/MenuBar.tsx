@@ -2,7 +2,9 @@ import { useState } from 'react';
 import type { CesiumViewerRef } from '../types';
 import InstancingTool from './menu/InstancingTool';
 import TilesLoader from './menu/TilesLoader';
+import LayerController from './layerManage/layerController';
 import './MenuBar.css';
+
 
 interface MenuBarProps {
   cesiumViewerRef: React.RefObject<CesiumViewerRef | null>;
@@ -17,6 +19,7 @@ type MenuItem = 'instancing' | 'tiles' | null;
 function MenuBar({ cesiumViewerRef }: MenuBarProps) {
   const [activeMenu, setActiveMenu] = useState<MenuItem>(null);
   const [isClosing, setIsClosing] = useState(false);
+  const [isLayerManagerOpen, setIsLayerManagerOpen] = useState(false);
 
   const handleMenuClick = (menu: MenuItem) => {
     if (activeMenu === menu) {
@@ -60,6 +63,12 @@ function MenuBar({ cesiumViewerRef }: MenuBarProps) {
             >
               Add 3D Tiles
             </button>
+            <button
+              className={`menu-button ${isLayerManagerOpen ? 'active' : ''}`}
+              onClick={() => setIsLayerManagerOpen(!isLayerManagerOpen)}
+            >
+              Layer Manager
+            </button>
           </div>
         </div>
       </div>
@@ -89,6 +98,13 @@ function MenuBar({ cesiumViewerRef }: MenuBarProps) {
           </div>
         </div>
       )}
+
+      {/* 图层管理器悬浮窗口 */}
+      <LayerController
+        cesiumViewerRef={cesiumViewerRef}
+        isOpen={isLayerManagerOpen}
+        onClose={() => setIsLayerManagerOpen(false)}
+      />
     </>
   );
 }

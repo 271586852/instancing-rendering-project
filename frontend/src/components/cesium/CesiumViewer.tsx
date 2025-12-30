@@ -2,7 +2,7 @@ import { useRef, useState, useImperativeHandle, forwardRef, useCallback } from '
 import { Viewer, Cesium3DTileset } from 'cesium';
 import { CesiumScene } from './CesiumScene';
 import { PerformanceStats } from './PerformanceStats';
-import type { CesiumViewerHandles } from '../../types';
+import type { CesiumViewerHandles, TilesetLayerInfo } from '../../types';
 
 interface CesiumViewerProps {
   showPerformanceStats?: boolean;
@@ -47,6 +47,80 @@ const CesiumViewer = forwardRef<CesiumViewerHandles, CesiumViewerProps>(
           } catch (error) {
             console.error(`Error loading tileset: ${error}`);
             throw error; // 重新抛出错误，让调用者处理
+          }
+        }
+      },
+
+      getTilesetLayers: (): TilesetLayerInfo[] => {
+        const viewerInstance = viewerRef.current;
+        if (!viewerInstance || !viewerInstance.scene) {
+          return [];
+        }
+
+        const layers: TilesetLayerInfo[] = [];
+        const primitives = viewerInstance.scene.primitives;
+
+        // 遍历 primitives 集合，找出所有 Cesium3DTileset 实例
+        for (let i = 0; i < primitives.length; i++) {
+          const primitive = primitives.get(i);
+          if (primitive instanceof Cesium3DTileset) {
+            const url = (primitive as any).url || '';
+            const name = url.split('/').pop() || 'Untitled Tileset';
+            
+            layers.push({
+              id: `${url}_${i}`, // 使用 URL 和索引生成唯一 ID
+              name: name,
+              url: url,
+              show: primitive.show,
+            });
+          }
+        }
+
+        return layers;
+      },
+
+      removeTileset: (id: string) => {
+        const viewerInstance = viewerRef.current;
+        if (!viewerInstance) {
+          return;
+        }
+
+        const primitives = viewerInstance.scene.primitives;
+        
+        // 遍历 primitives，找到匹配 ID 的 tileset 并移除
+        for (let i = 0; i < primitives.length; i++) {
+          const primitive = primitives.get(i);
+          if (primitive instanceof Cesium3DTileset) {
+            const url = (primitive as any).url || '';
+            const layerId = `${url}_${i}`;
+            
+            if (layerId === id) {
+              primitives.remove(primitive);
+              break;
+            }
+          }
+        }
+      },
+
+      toggleTilesetVisibility: (id: string, show: boolean) => {
+        const viewerInstance = viewerRef.current;
+        if (!viewerInstance) {
+          return;
+        }
+
+        const primitives = viewerInstance.scene.primitives;
+        
+        // 遍历 primitives，找到匹配 ID 的 tileset 并切换显示状态
+        for (let i = 0; i < primitives.length; i++) {
+          const primitive = primitives.get(i);
+          if (primitive instanceof Cesium3DTileset) {
+            const url = (primitive as any).url || '';
+            const layerId = `${url}_${i}`;
+            
+            if (layerId === id) {
+              primitive.show = show;
+              break;
+            }
           }
         }
       },

@@ -1,0 +1,218 @@
+/* 遮罩层 */
+.layer-window-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.3);
+  z-index: 200;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* 悬浮窗口 */
+.layer-window {
+  position: fixed;
+  background-color: #1e1e1e;
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  z-index: 201;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: windowSlideIn 0.3s ease-out;
+  min-width: 400px;
+  min-height: 300px;
+}
+
+@keyframes windowSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* 窗口头部 */
+.layer-window-header {
+  padding: 16px 20px;
+  background-color: #2d2d2d;
+  border-bottom: 1px solid #3d3d3d;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: move;
+  user-select: none;
+  border-radius: 8px 8px 0 0;
+}
+
+.layer-window-header:hover {
+  background-color: #353535;
+}
+
+.layer-window-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.layer-window-close {
+  background: none;
+  border: none;
+  color: #ffffff;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.layer-window-close:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.layer-window-close:active {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* 窗口内容 */
+.layer-window-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  background-color: #1e1e1e;
+}
+
+/* 自定义滚动条样式 */
+.layer-window-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.layer-window-content::-webkit-scrollbar-track {
+  background: #2d2d2d;
+}
+
+.layer-window-content::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 4px;
+}
+
+.layer-window-content::-webkit-scrollbar-thumb:hover {
+  background: #666;
+}
+
+/* 图层控制器内容样式 */
+.layer-controller-content {
+  color: #ffffff;
+}
+
+.layer-controller-content h1 {
+  margin-top: 0;
+  font-size: 24px;
+  color: #ffffff;
+}
+
+.layer-controller-content h2 {
+  font-size: 18px;
+  color: #ffffff;
+  margin: 16px 0 8px 0;
+}
+
+.layer-controller-content input {
+  padding: 8px 12px;
+  margin-right: 8px;
+  margin-bottom: 8px;
+  background-color: #2d2d2d;
+  border: 1px solid #3d3d3d;
+  border-radius: 4px;
+  color: #ffffff;
+  font-size: 14px;
+}
+
+.layer-controller-content input::placeholder {
+  color: #888;
+}
+
+.layer-controller-content input:focus {
+  outline: none;
+  border-color: #4d9eff;
+}
+
+.layer-controller-content button {
+  padding: 8px 16px;
+  margin-right: 8px;
+  margin-bottom: 8px;
+  background-color: #4d9eff;
+  border: none;
+  border-radius: 4px;
+  color: #ffffff;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.layer-controller-content button:hover {
+  background-color: #3d8eef;
+}
+
+.layer-controller-content button:active {
+  background-color: #2d7edf;
+}
+
+/* 调整大小手柄 */
+.layer-window-resize-handle {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 20px;
+  height: 20px;
+  cursor: nwse-resize;
+  background: linear-gradient(
+    135deg,
+    transparent 0%,
+    transparent 40%,
+    #555 40%,
+    #555 45%,
+    transparent 45%,
+    transparent 55%,
+    #555 55%,
+    #555 60%,
+    transparent 60%
+  );
+  z-index: 10;
+}
+
+.layer-window-resize-handle:hover {
+  background: linear-gradient(
+    135deg,
+    transparent 0%,
+    transparent 40%,
+    #777 40%,
+    #777 45%,
+    transparent 45%,
+    transparent 55%,
+    #777 55%,
+    #777 60%,
+    transparent 60%
+  );
+}
+
