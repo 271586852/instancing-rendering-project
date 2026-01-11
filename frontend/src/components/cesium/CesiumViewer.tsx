@@ -40,6 +40,8 @@ const CesiumViewer = forwardRef<CesiumViewerHandles, CesiumViewerProps>(
 
           try {
             const tileset = await Cesium3DTileset.fromUrl(url);
+            // 开启统计信息，这样 PerformanceStats 组件才能显示
+            (tileset as any).debugShowStatistics = true;
             viewerInstance.scene.primitives.add(tileset);
 
             // 自动缩放到新加载的 tileset

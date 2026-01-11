@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Viewer } from 'cesium';
+import { Viewer, Cesium3DTileset } from 'cesium';
 
 interface PerformanceStatsProps {
   viewer: Viewer | null;
@@ -101,6 +101,7 @@ export function PerformanceStats({
 
         if (delta > 1000) {
           const fps = Math.round((frameCount * 1000) / delta);
+          const avgFrameTime = delta / frameCount;
           
           // 安全地获取 drawCalls
           let drawCalls = 0;
@@ -114,8 +115,41 @@ export function PerformanceStats({
             console.warn('Failed to get draw calls:', error);
           }
 
+          let tilesetStatsHtml = '';
+          let tilesetFound = false;
+          const primitives = viewer.scene.primitives;
+          for (let i = 0; i < primitives.length; i++) {
+            const p = primitives.get(i);
+            if (p instanceof Cesium3DTileset) {
+              tilesetFound = true;
+              const stats = (p as any).statistics;
+              if (stats) {
+                const texturesByteLength = stats.texturesByteLength || 0;
+                const geometryByteLength = stats.geometryByteLength || 0;
+                const memory = (texturesByteLength + geometryByteLength) / (1024 * 1024);
+                
+                const visited = stats.visited || 0;
+                const triangles = stats.numberOfTriangles || 0;
+                const features = stats.numberOfFeaturesSelected || stats.numberOfFeaturesLoaded || 0;
+
+                tilesetStatsHtml = `
+                  <br/>--- 3D Tileset ---
+                  <br/>Visited Tiles: ${visited.toLocaleString()}
+                  <br/>Triangles: ${triangles.toLocaleString()}
+                  <br/>Features: ${features.toLocaleString()}
+                  <br/>Memory (MB): ${memory.toFixed(2)}
+                `;
+                break; // 只显示找到的第一个瓦片集的统计信息
+              }
+            }
+          }
+
+          if (tilesetFound && !tilesetStatsHtml) {
+            tilesetStatsHtml = `<br/>--- 3D Tileset ---<br/>(Waiting for stats...)`;
+          }
+
           if (statsContainer && statsContainer.parentNode) {
-            statsContainer.innerHTML = `FPS: ${fps}<br/>Draw Calls: ${drawCalls}`;
+            statsContainer.innerHTML = `FPS: ${fps}<br/>Frame Time: ${avgFrameTime.toFixed(2)} ms<br/>Draw Calls: ${drawCalls}${tilesetStatsHtml}`;
           }
 
           lastFpsUpdate = now;
