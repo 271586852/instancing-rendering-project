@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import type { CesiumViewerRef } from '../../types';
 import './layerController.css';
-import { EyeIcon, EyeOffIcon, TrashIcon } from './icons'; // 引入图标
+import { EyeIcon, EyeOffIcon, TrashIcon, FlyToIcon } from './icons'; // 引入图标
 
 interface Layer {
     id: string;
@@ -144,6 +144,13 @@ function LayerController({ cesiumViewerRef, isOpen, onClose }: LayerControllerPr
                             <li key={layer.id} className="layer-item">
                                 <span className="layer-name" title={layer.name}>{layer.name}</span>
                                 <div className="layer-actions">
+                                    <button
+                                        className="action-btn"
+                                        onClick={() => cesiumViewerRef.current?.flyToTileset(layer.id)}
+                                        aria-label="飞至图层"
+                                    >
+                                        <FlyToIcon />
+                                    </button>
                                     <button
                                         className="action-btn"
                                         onClick={() => handleToggleVisibility(layer)}
