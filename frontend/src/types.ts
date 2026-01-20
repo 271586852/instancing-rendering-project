@@ -19,6 +19,12 @@ export interface TilesetDebugOptions {
   debugColorizeTiles?: boolean;
 }
 
+// Globe 相关开关
+export interface GlobeOptions {
+  showGlobe?: boolean;
+  depthTestAgainstTerrain?: boolean;
+}
+
 // Cesium Viewer Handles 接口
 export interface CesiumViewerHandles {
   loadTileset: (url: string) => Promise<void>;
@@ -28,6 +34,7 @@ export interface CesiumViewerHandles {
   setLayerName: (id: string, name: string) => void;
   flyToTileset: (id: string) => void;
   setTilesetDebugOptions: (options: TilesetDebugOptions) => void;
+  setGlobeOptions: (options: GlobeOptions) => void;
 }
 
 // Cesium Viewer 的 ref 接口

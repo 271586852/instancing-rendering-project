@@ -2,7 +2,12 @@ import { useRef, useState, useImperativeHandle, forwardRef, useCallback } from '
 import { Viewer, Cesium3DTileset } from 'cesium';
 import { CesiumScene } from './CesiumScene';
 import { PerformanceStats } from './PerformanceStats';
-import type { CesiumViewerHandles, TilesetDebugOptions, TilesetLayerInfo } from '../../types';
+import type {
+  CesiumViewerHandles,
+  GlobeOptions,
+  TilesetDebugOptions,
+  TilesetLayerInfo,
+} from '../../types';
 
 type NamedTileset = Cesium3DTileset & {
   customName?: string;
@@ -29,15 +34,29 @@ const CesiumViewer = forwardRef<CesiumViewerHandles, CesiumViewerProps>(
       debugShowBoundingVolume: true,
       debugColorizeTiles: true,
     });
+    const globeOptionsRef = useRef<GlobeOptions>({
+      showGlobe: true,
+      depthTestAgainstTerrain: true,
+    });
 
     const handleViewerReady = useCallback((viewerInstance: Viewer) => {
       viewerRef.current = viewerInstance;
       setViewer(viewerInstance);
+      applyGlobeOptions();
     }, []);
 
     const applyDebugOptionsToTileset = (tileset: NamedTileset) => {
       tileset.debugShowBoundingVolume = !!debugOptionsRef.current.debugShowBoundingVolume;
       tileset.debugColorizeTiles = !!debugOptionsRef.current.debugColorizeTiles;
+    };
+
+    const applyGlobeOptions = () => {
+      const viewerInstance = viewerRef.current;
+      if (!viewerInstance || viewerInstance.isDestroyed()) return;
+      const globe = viewerInstance.scene?.globe;
+      if (!globe) return;
+      globe.show = globeOptionsRef.current.showGlobe ?? true;
+      globe.depthTestAgainstTerrain = globeOptionsRef.current.depthTestAgainstTerrain ?? true;
     };
 
     const applyDebugOptionsToAllTilesets = () => {
@@ -167,6 +186,14 @@ const CesiumViewer = forwardRef<CesiumViewerHandles, CesiumViewerProps>(
           ...options,
         };
         applyDebugOptionsToAllTilesets();
+      },
+
+      setGlobeOptions: (options: GlobeOptions) => {
+        globeOptionsRef.current = {
+          ...globeOptionsRef.current,
+          ...options,
+        };
+        applyGlobeOptions();
       },
     }));
 

@@ -23,6 +23,8 @@ function MenuBar({ cesiumViewerRef }: MenuBarProps) {
   const [isLayerManagerOpen, setIsLayerManagerOpen] = useState(false);
   const [debugShowBoundingVolume, setDebugShowBoundingVolume] = useState(true);
   const [debugColorizeTiles, setDebugColorizeTiles] = useState(true);
+  const [showGlobe, setShowGlobe] = useState(true);
+  const [depthTestAgainstTerrain, setDepthTestAgainstTerrain] = useState(true);
 
   const handleMenuClick = (menu: MenuItem) => {
     if (activeMenu === menu) {
@@ -61,12 +63,33 @@ function MenuBar({ cesiumViewerRef }: MenuBarProps) {
     });
   };
 
+  const handleToggleShowGlobe = (enabled: boolean) => {
+    setShowGlobe(enabled);
+    cesiumViewerRef.current?.setGlobeOptions({
+      showGlobe: enabled,
+    });
+  };
+
+  const handleToggleDepthTest = (enabled: boolean) => {
+    setDepthTestAgainstTerrain(enabled);
+    cesiumViewerRef.current?.setGlobeOptions({
+      depthTestAgainstTerrain: enabled,
+    });
+  };
+
   useEffect(() => {
     cesiumViewerRef.current?.setTilesetDebugOptions({
       debugShowBoundingVolume,
       debugColorizeTiles,
     });
   }, [debugShowBoundingVolume, debugColorizeTiles, cesiumViewerRef]);
+
+  useEffect(() => {
+    cesiumViewerRef.current?.setGlobeOptions({
+      showGlobe,
+      depthTestAgainstTerrain,
+    });
+  }, [showGlobe, depthTestAgainstTerrain, cesiumViewerRef]);
 
   const getPanelTitle = () => {
     if (activeMenu === 'instancing') return 'Instancing Tool';
@@ -137,6 +160,10 @@ function MenuBar({ cesiumViewerRef }: MenuBarProps) {
                 debugColorizeTiles={debugColorizeTiles}
                 onToggleBoundingVolume={handleToggleBoundingVolume}
                 onToggleColorizeTiles={handleToggleColorizeTiles}
+                showGlobe={showGlobe}
+                depthTestAgainstTerrain={depthTestAgainstTerrain}
+                onToggleShowGlobe={handleToggleShowGlobe}
+                onToggleDepthTest={handleToggleDepthTest}
               />
             )}
           </div>
