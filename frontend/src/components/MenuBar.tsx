@@ -25,6 +25,13 @@ function MenuBar({ cesiumViewerRef }: MenuBarProps) {
   const [debugColorizeTiles, setDebugColorizeTiles] = useState(true);
   const [showGlobe, setShowGlobe] = useState(true);
   const [depthTestAgainstTerrain, setDepthTestAgainstTerrain] = useState(true);
+  const [translationInput, setTranslationInput] = useState({ x: '0', y: '0', z: '0' });
+  const [rotationInput, setRotationInput] = useState({
+    headingDeg: '0',
+    pitchDeg: '0',
+    rollDeg: '0',
+  });
+  const [scaleInput, setScaleInput] = useState('1');
 
   const handleMenuClick = (menu: MenuItem) => {
     if (activeMenu === menu) {
@@ -74,6 +81,43 @@ function MenuBar({ cesiumViewerRef }: MenuBarProps) {
     setDepthTestAgainstTerrain(enabled);
     cesiumViewerRef.current?.setGlobeOptions({
       depthTestAgainstTerrain: enabled,
+    });
+  };
+
+  const handleTranslationChange = (axis: 'x' | 'y' | 'z', value: string) => {
+    setTranslationInput((prev) => ({ ...prev, [axis]: value }));
+  };
+
+  const handleRotationChange = (axis: 'headingDeg' | 'pitchDeg' | 'rollDeg', value: string) => {
+    setRotationInput((prev) => ({ ...prev, [axis]: value }));
+  };
+
+  const handleScaleChange = (value: string) => {
+    setScaleInput(value);
+  };
+
+  const safeNumber = (val: string, fallback = 0) => {
+    const num = parseFloat(val);
+    return Number.isNaN(num) ? fallback : num;
+  };
+
+  const handleApplyTransform = () => {
+    const translation = {
+      x: safeNumber(translationInput.x, 0),
+      y: safeNumber(translationInput.y, 0),
+      z: safeNumber(translationInput.z, 0),
+    };
+    const rotation = {
+      headingDeg: safeNumber(rotationInput.headingDeg, 0),
+      pitchDeg: safeNumber(rotationInput.pitchDeg, 0),
+      rollDeg: safeNumber(rotationInput.rollDeg, 0),
+    };
+    const scale = safeNumber(scaleInput, 1);
+
+    cesiumViewerRef.current?.setTilesetTransform({
+      translation,
+      rotation,
+      scale,
     });
   };
 
@@ -164,6 +208,13 @@ function MenuBar({ cesiumViewerRef }: MenuBarProps) {
                 depthTestAgainstTerrain={depthTestAgainstTerrain}
                 onToggleShowGlobe={handleToggleShowGlobe}
                 onToggleDepthTest={handleToggleDepthTest}
+                translation={translationInput}
+                onChangeTranslation={handleTranslationChange}
+                onApplyTransform={handleApplyTransform}
+                rotation={rotationInput}
+                onChangeRotation={handleRotationChange}
+                scale={scaleInput}
+                onChangeScale={handleScaleChange}
               />
             )}
           </div>

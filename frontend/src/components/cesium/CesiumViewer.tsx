@@ -1,10 +1,19 @@
 import { useRef, useState, useImperativeHandle, forwardRef, useCallback } from 'react';
-import { Viewer, Cesium3DTileset } from 'cesium';
+import {
+  Viewer,
+  Cesium3DTileset,
+  Matrix4,
+  Cartesian3,
+  HeadingPitchRoll,
+  Quaternion,
+  TranslationRotationScale,
+} from 'cesium';
 import { CesiumScene } from './CesiumScene';
 import { PerformanceStats } from './PerformanceStats';
 import type {
   CesiumViewerHandles,
   GlobeOptions,
+  TilesetTransformOptions,
   TilesetDebugOptions,
   TilesetLayerInfo,
 } from '../../types';
@@ -38,6 +47,11 @@ const CesiumViewer = forwardRef<CesiumViewerHandles, CesiumViewerProps>(
       showGlobe: true,
       depthTestAgainstTerrain: true,
     });
+    const transformOptionsRef = useRef<TilesetTransformOptions>({
+      translation: { x: 0, y: 0, z: 0 },
+      rotation: { headingDeg: 0, pitchDeg: 0, rollDeg: 0 },
+      scale: 1,
+    });
 
     const handleViewerReady = useCallback((viewerInstance: Viewer) => {
       viewerRef.current = viewerInstance;
@@ -48,6 +62,26 @@ const CesiumViewer = forwardRef<CesiumViewerHandles, CesiumViewerProps>(
     const applyDebugOptionsToTileset = (tileset: NamedTileset) => {
       tileset.debugShowBoundingVolume = !!debugOptionsRef.current.debugShowBoundingVolume;
       tileset.debugColorizeTiles = !!debugOptionsRef.current.debugColorizeTiles;
+    };
+
+    const applyTransformToTileset = (tileset: NamedTileset) => {
+      const { translation, rotation, scale } = transformOptionsRef.current;
+      const trs = new TranslationRotationScale();
+      if (translation) {
+        trs.translation = new Cartesian3(translation.x, translation.y, translation.z);
+      }
+      if (rotation) {
+        const hpr = new HeadingPitchRoll(
+          (rotation.headingDeg * Math.PI) / 180,
+          (rotation.pitchDeg * Math.PI) / 180,
+          (rotation.rollDeg * Math.PI) / 180
+        );
+        trs.rotation = Quaternion.fromHeadingPitchRoll(hpr);
+      }
+      if (typeof scale === 'number') {
+        trs.scale = new Cartesian3(scale, scale, scale);
+      }
+      tileset.modelMatrix = Matrix4.fromTranslationRotationScale(trs);
     };
 
     const applyGlobeOptions = () => {
@@ -71,6 +105,18 @@ const CesiumViewer = forwardRef<CesiumViewerHandles, CesiumViewerProps>(
       }
     };
 
+    const applyTransformToAllTilesets = () => {
+      const viewerInstance = viewerRef.current;
+      if (!viewerInstance || viewerInstance.isDestroyed()) return;
+      const { primitives } = viewerInstance.scene;
+      for (let i = 0; i < primitives.length; i++) {
+        const primitive = primitives.get(i);
+        if (primitive instanceof Cesium3DTileset) {
+          applyTransformToTileset(primitive);
+        }
+      }
+    };
+
     useImperativeHandle(ref, () => ({
       loadTileset: async (url: string) => {
         const viewerInstance = viewerRef.current;
@@ -80,6 +126,7 @@ const CesiumViewer = forwardRef<CesiumViewerHandles, CesiumViewerProps>(
             tileset.debugShowStatistics = true;
             tileset.customName = url.split('/').pop() || 'Untitled Tileset';
             applyDebugOptionsToTileset(tileset);
+            applyTransformToTileset(tileset);
             viewerInstance.scene.primitives.add(tileset);
             await viewerInstance.zoomTo(tileset);
           } catch (error) {
@@ -194,6 +241,14 @@ const CesiumViewer = forwardRef<CesiumViewerHandles, CesiumViewerProps>(
           ...options,
         };
         applyGlobeOptions();
+      },
+
+      setTilesetTransform: (options: TilesetTransformOptions) => {
+        transformOptionsRef.current = {
+          ...transformOptionsRef.current,
+          ...options,
+        };
+        applyTransformToAllTilesets();
       },
     }));
 

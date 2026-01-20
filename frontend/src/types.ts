@@ -25,6 +25,21 @@ export interface GlobeOptions {
   depthTestAgainstTerrain?: boolean;
 }
 
+// Tileset 变换配置
+export interface TilesetTransformOptions {
+  translation?: {
+    x: number;
+    y: number;
+    z: number;
+  };
+  rotation?: {
+    headingDeg: number;
+    pitchDeg: number;
+    rollDeg: number;
+  };
+  scale?: number;
+}
+
 // Cesium Viewer Handles 接口
 export interface CesiumViewerHandles {
   loadTileset: (url: string) => Promise<void>;
@@ -35,6 +50,7 @@ export interface CesiumViewerHandles {
   flyToTileset: (id: string) => void;
   setTilesetDebugOptions: (options: TilesetDebugOptions) => void;
   setGlobeOptions: (options: GlobeOptions) => void;
+  setTilesetTransform: (options: TilesetTransformOptions) => void;
 }
 
 // Cesium Viewer 的 ref 接口
