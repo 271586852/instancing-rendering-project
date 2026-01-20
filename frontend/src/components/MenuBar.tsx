@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { CesiumViewerRef } from '../types';
 import InstancingTool from './menu/InstancingTool';
 import TilesLoader from './menu/TilesLoader';
+import SettingsPanel from './menu/SettingsPanel';
 import LayerController from './layerManage/layerController';
 import './MenuBar.css';
 
@@ -10,7 +11,7 @@ interface MenuBarProps {
   cesiumViewerRef: React.RefObject<CesiumViewerRef | null>;
 }
 
-type MenuItem = 'instancing' | 'tiles' | null;
+type MenuItem = 'instancing' | 'tiles' | 'settings' | null;
 
 /**
  * 顶部菜单栏组件
@@ -20,6 +21,8 @@ function MenuBar({ cesiumViewerRef }: MenuBarProps) {
   const [activeMenu, setActiveMenu] = useState<MenuItem>(null);
   const [isClosing, setIsClosing] = useState(false);
   const [isLayerManagerOpen, setIsLayerManagerOpen] = useState(false);
+  const [debugShowBoundingVolume, setDebugShowBoundingVolume] = useState(true);
+  const [debugColorizeTiles, setDebugColorizeTiles] = useState(true);
 
   const handleMenuClick = (menu: MenuItem) => {
     if (activeMenu === menu) {
@@ -44,6 +47,33 @@ function MenuBar({ cesiumViewerRef }: MenuBarProps) {
     }, 300); // 等待动画完成
   };
 
+  const handleToggleBoundingVolume = (enabled: boolean) => {
+    setDebugShowBoundingVolume(enabled);
+    cesiumViewerRef.current?.setTilesetDebugOptions({
+      debugShowBoundingVolume: enabled,
+    });
+  };
+
+  const handleToggleColorizeTiles = (enabled: boolean) => {
+    setDebugColorizeTiles(enabled);
+    cesiumViewerRef.current?.setTilesetDebugOptions({
+      debugColorizeTiles: enabled,
+    });
+  };
+
+  useEffect(() => {
+    cesiumViewerRef.current?.setTilesetDebugOptions({
+      debugShowBoundingVolume,
+      debugColorizeTiles,
+    });
+  }, [debugShowBoundingVolume, debugColorizeTiles, cesiumViewerRef]);
+
+  const getPanelTitle = () => {
+    if (activeMenu === 'instancing') return 'Instancing Tool';
+    if (activeMenu === 'tiles') return 'Add 3D Tiles';
+    return 'Settings';
+  };
+
   return (
     <>
       {/* 顶部菜单栏 */}
@@ -64,6 +94,12 @@ function MenuBar({ cesiumViewerRef }: MenuBarProps) {
               Add 3D Tiles
             </button>
             <button
+              className={`menu-button ${activeMenu === 'settings' ? 'active' : ''}`}
+              onClick={() => handleMenuClick('settings')}
+            >
+              Settings
+            </button>
+            <button
               className={`menu-button ${isLayerManagerOpen ? 'active' : ''}`}
               onClick={() => setIsLayerManagerOpen(!isLayerManagerOpen)}
             >
@@ -78,7 +114,7 @@ function MenuBar({ cesiumViewerRef }: MenuBarProps) {
         <div className={`menu-panel ${isClosing ? 'closing' : ''}`}>
           <div className="menu-panel-header">
             <h2 className="menu-panel-title">
-              {activeMenu === 'instancing' ? 'Instancing Tool' : 'Add 3D Tiles'}
+              {getPanelTitle()}
             </h2>
             <button
               className="menu-panel-close"
@@ -94,6 +130,14 @@ function MenuBar({ cesiumViewerRef }: MenuBarProps) {
             )}
             {activeMenu === 'tiles' && (
               <TilesLoader cesiumViewerRef={cesiumViewerRef} />
+            )}
+            {activeMenu === 'settings' && (
+              <SettingsPanel
+                debugShowBoundingVolume={debugShowBoundingVolume}
+                debugColorizeTiles={debugColorizeTiles}
+                onToggleBoundingVolume={handleToggleBoundingVolume}
+                onToggleColorizeTiles={handleToggleColorizeTiles}
+              />
             )}
           </div>
         </div>

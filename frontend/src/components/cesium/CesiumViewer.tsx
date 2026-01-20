@@ -2,7 +2,13 @@ import { useRef, useState, useImperativeHandle, forwardRef, useCallback } from '
 import { Viewer, Cesium3DTileset } from 'cesium';
 import { CesiumScene } from './CesiumScene';
 import { PerformanceStats } from './PerformanceStats';
-import type { CesiumViewerHandles, TilesetLayerInfo } from '../../types';
+import type { CesiumViewerHandles, TilesetDebugOptions, TilesetLayerInfo } from '../../types';
+
+type NamedTileset = Cesium3DTileset & {
+  customName?: string;
+  url?: string;
+  debugShowStatistics?: boolean;
+};
 
 interface CesiumViewerProps {
   showPerformanceStats?: boolean;
@@ -19,20 +25,42 @@ const CesiumViewer = forwardRef<CesiumViewerHandles, CesiumViewerProps>(
     const cesiumContainerRef = useRef<HTMLDivElement>(null);
     const viewerRef = useRef<Viewer | null>(null);
     const [viewer, setViewer] = useState<Viewer | null>(null);
+    const debugOptionsRef = useRef<TilesetDebugOptions>({
+      debugShowBoundingVolume: true,
+      debugColorizeTiles: true,
+    });
 
     const handleViewerReady = useCallback((viewerInstance: Viewer) => {
       viewerRef.current = viewerInstance;
       setViewer(viewerInstance);
     }, []);
 
+    const applyDebugOptionsToTileset = (tileset: NamedTileset) => {
+      tileset.debugShowBoundingVolume = !!debugOptionsRef.current.debugShowBoundingVolume;
+      tileset.debugColorizeTiles = !!debugOptionsRef.current.debugColorizeTiles;
+    };
+
+    const applyDebugOptionsToAllTilesets = () => {
+      const viewerInstance = viewerRef.current;
+      if (!viewerInstance || viewerInstance.isDestroyed()) return;
+      const { primitives } = viewerInstance.scene;
+      for (let i = 0; i < primitives.length; i++) {
+        const primitive = primitives.get(i);
+        if (primitive instanceof Cesium3DTileset) {
+          applyDebugOptionsToTileset(primitive);
+        }
+      }
+    };
+
     useImperativeHandle(ref, () => ({
       loadTileset: async (url: string) => {
         const viewerInstance = viewerRef.current;
-        if (viewerInstance) {
+        if (viewerInstance && !viewerInstance.isDestroyed()) {
           try {
-            const tileset: any = await Cesium3DTileset.fromUrl(url);
+            const tileset = (await Cesium3DTileset.fromUrl(url)) as NamedTileset;
             tileset.debugShowStatistics = true;
             tileset.customName = url.split('/').pop() || 'Untitled Tileset';
+            applyDebugOptionsToTileset(tileset);
             viewerInstance.scene.primitives.add(tileset);
             await viewerInstance.zoomTo(tileset);
           } catch (error) {
@@ -44,15 +72,16 @@ const CesiumViewer = forwardRef<CesiumViewerHandles, CesiumViewerProps>(
 
       getTilesetLayers: (): TilesetLayerInfo[] => {
         const viewerInstance = viewerRef.current;
-        if (!viewerInstance || !viewerInstance.scene) return [];
+        if (!viewerInstance || viewerInstance.isDestroyed() || !viewerInstance.scene) return [];
         
         const layers: TilesetLayerInfo[] = [];
         const primitives = viewerInstance.scene.primitives;
         for (let i = 0; i < primitives.length; i++) {
           const primitive = primitives.get(i);
           if (primitive instanceof Cesium3DTileset) {
-            const url = (primitive as any).url || '';
-            const name = (primitive as any).customName || url.split('/').pop() || 'Untitled Tileset';
+            const tileset = primitive as NamedTileset;
+            const url = tileset.url || '';
+            const name = tileset.customName || url.split('/').pop() || 'Untitled Tileset';
             layers.push({
               id: `${url}_${i}`,
               name: name,
@@ -66,12 +95,13 @@ const CesiumViewer = forwardRef<CesiumViewerHandles, CesiumViewerProps>(
 
       removeTileset: (id: string) => {
         const viewerInstance = viewerRef.current;
-        if (!viewerInstance) return;
+        if (!viewerInstance || viewerInstance.isDestroyed()) return;
         const primitives = viewerInstance.scene.primitives;
         for (let i = 0; i < primitives.length; i++) {
           const primitive = primitives.get(i);
           if (primitive instanceof Cesium3DTileset) {
-            const url = (primitive as any).url || '';
+            const tileset = primitive as NamedTileset;
+            const url = tileset.url || '';
             if (`${url}_${i}` === id) {
               primitives.remove(primitive);
               break;
@@ -82,12 +112,13 @@ const CesiumViewer = forwardRef<CesiumViewerHandles, CesiumViewerProps>(
 
       toggleTilesetVisibility: (id: string, show: boolean) => {
         const viewerInstance = viewerRef.current;
-        if (!viewerInstance) return;
+        if (!viewerInstance || viewerInstance.isDestroyed()) return;
         const primitives = viewerInstance.scene.primitives;
         for (let i = 0; i < primitives.length; i++) {
           const primitive = primitives.get(i);
           if (primitive instanceof Cesium3DTileset) {
-            const url = (primitive as any).url || '';
+            const tileset = primitive as NamedTileset;
+            const url = tileset.url || '';
             if (`${url}_${i}` === id) {
               primitive.show = show;
               break;
@@ -103,9 +134,10 @@ const CesiumViewer = forwardRef<CesiumViewerHandles, CesiumViewerProps>(
         for (let i = 0; i < primitives.length; i++) {
           const primitive = primitives.get(i);
           if (primitive instanceof Cesium3DTileset) {
-            const url = (primitive as any).url || '';
+            const tileset = primitive as NamedTileset;
+            const url = tileset.url || '';
             if (`${url}_${i}` === id) {
-              (primitive as any).customName = name;
+              tileset.customName = name;
               break;
             }
           }
@@ -119,13 +151,22 @@ const CesiumViewer = forwardRef<CesiumViewerHandles, CesiumViewerProps>(
         for (let i = 0; i < primitives.length; i++) {
           const primitive = primitives.get(i);
           if (primitive instanceof Cesium3DTileset) {
-            const url = (primitive as any).url || '';
+            const tileset = primitive as NamedTileset;
+            const url = tileset.url || '';
             if (`${url}_${i}` === id) {
               viewerInstance.zoomTo(primitive);
               break;
             }
           }
         }
+      },
+
+      setTilesetDebugOptions: (options: TilesetDebugOptions) => {
+        debugOptionsRef.current = {
+          ...debugOptionsRef.current,
+          ...options,
+        };
+        applyDebugOptionsToAllTilesets();
       },
     }));
 
