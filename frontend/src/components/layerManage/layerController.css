@@ -105,6 +105,7 @@
   padding: 10px 8px;
   border-radius: 6px;
   transition: background-color 0.15s ease;
+  flex-wrap: wrap;
 }
 
 .layer-item:hover {
@@ -123,6 +124,93 @@
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.layer-transform-panel {
+  width: 100%;
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid var(--layer-manager-border);
+  border-radius: 8px;
+  background: rgba(34, 34, 36, 0.9);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.transform-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.transform-label {
+  font-size: 0.9em;
+  color: var(--text-secondary);
+}
+
+.transform-inputs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.transform-inputs label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85em;
+  color: var(--text-primary);
+}
+
+.transform-inputs input {
+  width: 90px;
+  padding: 6px 8px;
+  background-color: #2f2f2f;
+  border: 1px solid #444;
+  border-radius: 6px;
+  color: #fff;
+}
+
+.transform-inputs input:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}
+
+.transform-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.transform-apply-btn,
+.transform-cancel-btn {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9em;
+  transition: background-color 0.15s ease;
+}
+
+.transform-apply-btn {
+  background-color: var(--accent-color);
+  color: #fff;
+}
+
+.transform-apply-btn:hover {
+  background-color: var(--accent-color-hover);
+}
+
+.transform-cancel-btn {
+  background-color: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--layer-manager-border);
+}
+
+.transform-cancel-btn:hover {
+  background-color: var(--layer-item-hover);
+  color: var(--text-primary);
 }
 
 .action-btn {

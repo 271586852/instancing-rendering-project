@@ -64,8 +64,8 @@ const CesiumViewer = forwardRef<CesiumViewerHandles, CesiumViewerProps>(
       tileset.debugColorizeTiles = !!debugOptionsRef.current.debugColorizeTiles;
     };
 
-    const applyTransformToTileset = (tileset: NamedTileset) => {
-      const { translation, rotation, scale } = transformOptionsRef.current;
+    const buildModelMatrix = (options: TilesetTransformOptions) => {
+      const { translation, rotation, scale } = options;
       const trs = new TranslationRotationScale();
       if (translation) {
         trs.translation = new Cartesian3(translation.x, translation.y, translation.z);
@@ -81,7 +81,12 @@ const CesiumViewer = forwardRef<CesiumViewerHandles, CesiumViewerProps>(
       if (typeof scale === 'number') {
         trs.scale = new Cartesian3(scale, scale, scale);
       }
-      tileset.modelMatrix = Matrix4.fromTranslationRotationScale(trs);
+      return Matrix4.fromTranslationRotationScale(trs);
+    };
+
+    const applyTransformToTileset = (tileset: NamedTileset) => {
+      const matrix = buildModelMatrix(transformOptionsRef.current);
+      tileset.modelMatrix = matrix;
     };
 
     const applyGlobeOptions = () => {
@@ -249,6 +254,28 @@ const CesiumViewer = forwardRef<CesiumViewerHandles, CesiumViewerProps>(
           ...options,
         };
         applyTransformToAllTilesets();
+      },
+
+      setTilesetTransformForLayer: (id: string, options: TilesetTransformOptions) => {
+        const viewerInstance = viewerRef.current;
+        if (!viewerInstance || viewerInstance.isDestroyed()) return;
+        const { primitives } = viewerInstance.scene;
+        for (let i = 0; i < primitives.length; i++) {
+          const primitive = primitives.get(i);
+          if (primitive instanceof Cesium3DTileset) {
+            const tileset = primitive as NamedTileset;
+            const url = tileset.url || '';
+            if (`${url}_${i}` === id) {
+              const matrix = buildModelMatrix({
+                translation: options.translation ?? { x: 0, y: 0, z: 0 },
+                rotation: options.rotation ?? { headingDeg: 0, pitchDeg: 0, rollDeg: 0 },
+                scale: options.scale ?? 1,
+              });
+              tileset.modelMatrix = matrix;
+              break;
+            }
+          }
+        }
       },
     }));
 

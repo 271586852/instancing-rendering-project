@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
-import type { CesiumViewerRef } from '../../types';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import type { ChangeEvent, Dispatch, SetStateAction } from 'react';
+import type { CesiumViewerRef, TilesetTransformOptions } from '../../types';
 import './layerController.css';
-import { EyeIcon, EyeOffIcon, TrashIcon, FlyToIcon } from './icons'; // 引入图标
+import { EyeIcon, EyeOffIcon, TrashIcon, FlyToIcon, EditIcon } from './icons'; // 引入图标
 
 interface Layer {
     id: string;
@@ -23,6 +24,10 @@ function LayerController({ cesiumViewerRef, isOpen, onClose }: LayerControllerPr
     const [layers, setLayers] = useState<Layer[]>([]);
     const windowRef = useRef<HTMLDivElement>(null);
     const contentRef = useRef<HTMLDivElement>(null);
+    const [editingLayerId, setEditingLayerId] = useState<string | null>(null);
+    const [translationInput, setTranslationInput] = useState({ x: '0', y: '0', z: '0' });
+    const [rotationInput, setRotationInput] = useState({ headingDeg: '0', pitchDeg: '0', rollDeg: '0' });
+    const [scaleInput, setScaleInput] = useState('1');
 
     // 窗口拖拽相关状态
     const [isDragging, setIsDragging] = useState(false);
@@ -37,7 +42,7 @@ function LayerController({ cesiumViewerRef, isOpen, onClose }: LayerControllerPr
         positionRef.current = position;
     }, [position]);
 
-    const refreshLayers = () => {
+    const refreshLayers = useCallback(() => {
         if (cesiumViewerRef.current) {
             try {
                 const currentLayers = cesiumViewerRef.current.getTilesetLayers();
@@ -47,7 +52,7 @@ function LayerController({ cesiumViewerRef, isOpen, onClose }: LayerControllerPr
                 setLayers([]);
             }
         }
-    };
+    }, [cesiumViewerRef]);
 
     useEffect(() => {
         if (isOpen) {
@@ -57,7 +62,7 @@ function LayerController({ cesiumViewerRef, isOpen, onClose }: LayerControllerPr
                 windowRef.current.focus();
             }
         }
-    }, [isOpen]);
+    }, [isOpen, refreshLayers]);
     
     // 拖拽事件处理
     const onDragMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -112,6 +117,43 @@ function LayerController({ cesiumViewerRef, isOpen, onClose }: LayerControllerPr
         refreshLayers();
     };
 
+    const openEdit = (layer: Layer) => {
+        setEditingLayerId((prev) => (prev === layer.id ? null : layer.id));
+        // 重置输入为默认
+        setTranslationInput({ x: '0', y: '0', z: '0' });
+        setRotationInput({ headingDeg: '0', pitchDeg: '0', rollDeg: '0' });
+        setScaleInput('1');
+    };
+
+    const handleInput = <T extends Record<string, string>>(
+        setter: Dispatch<SetStateAction<T>>,
+        key: keyof T,
+    ) => (e: ChangeEvent<HTMLInputElement>) => {
+        setter((prev) => ({ ...prev, [key]: e.target.value }));
+    };
+
+    const safeNumber = (val: string, fallback = 0) => {
+        const num = parseFloat(val);
+        return Number.isNaN(num) ? fallback : num;
+    };
+
+    const applyTransform = (layer: Layer) => {
+        const options: TilesetTransformOptions = {
+            translation: {
+                x: safeNumber(translationInput.x, 0),
+                y: safeNumber(translationInput.y, 0),
+                z: safeNumber(translationInput.z, 0),
+            },
+            rotation: {
+                headingDeg: safeNumber(rotationInput.headingDeg, 0),
+                pitchDeg: safeNumber(rotationInput.pitchDeg, 0),
+                rollDeg: safeNumber(rotationInput.rollDeg, 0),
+            },
+            scale: safeNumber(scaleInput, 1),
+        };
+        cesiumViewerRef.current?.setTilesetTransformForLayer(layer.id, options);
+    };
+
     if (!isOpen) return null;
 
     return (
@@ -159,6 +201,13 @@ function LayerController({ cesiumViewerRef, isOpen, onClose }: LayerControllerPr
                                         {layer.show ? <EyeIcon /> : <EyeOffIcon />}
                                     </button>
                                     <button
+                                        className="action-btn"
+                                        onClick={() => openEdit(layer)}
+                                        aria-label="编辑变换"
+                                    >
+                                        <EditIcon />
+                                    </button>
+                                    <button
                                         className="action-btn remove-btn"
                                         onClick={() => handleRemoveLayer(layer)}
                                         aria-label="移除图层"
@@ -166,6 +215,90 @@ function LayerController({ cesiumViewerRef, isOpen, onClose }: LayerControllerPr
                                         <TrashIcon />
                                     </button>
                                 </div>
+                                {editingLayerId === layer.id && (
+                                    <div className="layer-transform-panel">
+                                        <div className="transform-row">
+                                            <div className="transform-label">平移 (m)</div>
+                                            <div className="transform-inputs">
+                                                <label>
+                                                    X
+                                                    <input
+                                                        type="number"
+                                                        value={translationInput.x}
+                                                        onChange={handleInput(setTranslationInput, 'x')}
+                                                    />
+                                                </label>
+                                                <label>
+                                                    Y
+                                                    <input
+                                                        type="number"
+                                                        value={translationInput.y}
+                                                        onChange={handleInput(setTranslationInput, 'y')}
+                                                    />
+                                                </label>
+                                                <label>
+                                                    Z
+                                                    <input
+                                                        type="number"
+                                                        value={translationInput.z}
+                                                        onChange={handleInput(setTranslationInput, 'z')}
+                                                    />
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div className="transform-row">
+                                            <div className="transform-label">旋转 (度)</div>
+                                            <div className="transform-inputs">
+                                                <label>
+                                                    Heading
+                                                    <input
+                                                        type="number"
+                                                        value={rotationInput.headingDeg}
+                                                        onChange={handleInput(setRotationInput, 'headingDeg')}
+                                                    />
+                                                </label>
+                                                <label>
+                                                    Pitch
+                                                    <input
+                                                        type="number"
+                                                        value={rotationInput.pitchDeg}
+                                                        onChange={handleInput(setRotationInput, 'pitchDeg')}
+                                                    />
+                                                </label>
+                                                <label>
+                                                    Roll
+                                                    <input
+                                                        type="number"
+                                                        value={rotationInput.rollDeg}
+                                                        onChange={handleInput(setRotationInput, 'rollDeg')}
+                                                    />
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div className="transform-row">
+                                            <div className="transform-label">缩放</div>
+                                            <div className="transform-inputs">
+                                                <label>
+                                                    Scale
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={scaleInput}
+                                                        onChange={(e) => setScaleInput(e.target.value)}
+                                                    />
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div className="transform-actions">
+                                            <button className="transform-apply-btn" onClick={() => applyTransform(layer)}>
+                                                应用
+                                            </button>
+                                            <button className="transform-cancel-btn" onClick={() => setEditingLayerId(null)}>
+                                                关闭
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
                             </li>
                         ))}
                     </ul>

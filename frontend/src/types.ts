@@ -51,6 +51,7 @@ export interface CesiumViewerHandles {
   setTilesetDebugOptions: (options: TilesetDebugOptions) => void;
   setGlobeOptions: (options: GlobeOptions) => void;
   setTilesetTransform: (options: TilesetTransformOptions) => void;
+  setTilesetTransformForLayer: (id: string, options: TilesetTransformOptions) => void;
 }
 
 // Cesium Viewer 的 ref 接口
