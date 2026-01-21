@@ -24,6 +24,7 @@ export function PerformanceStats({
   style,
 }: PerformanceStatsProps) {
   const statsContainerRef = useRef<HTMLDivElement | null>(null);
+  const containerElRef = useRef<HTMLDivElement | null>(null);
   const renderListenerRef = useRef<(() => void) | undefined>(undefined);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -51,10 +52,13 @@ export function PerformanceStats({
         return;
       }
 
-      // 再次检查组件是否仍然挂载且 viewer 有效
-      if (!isMounted || !viewer || viewer.isDestroyed() || !viewer.scene) {
-        return;
-      }
+    // 再次检查组件是否仍然挂载且 viewer 有效
+    if (!isMounted || !viewer || viewer.isDestroyed() || !viewer.scene) {
+      return;
+    }
+
+    const containerEl = containerRef.current;
+    containerElRef.current = containerEl;
 
       // 创建性能统计容器
       const statsContainer = document.createElement('div');
@@ -77,17 +81,130 @@ export function PerformanceStats({
         Object.assign(statsContainer.style, style);
       }
 
-      if (!containerRef.current) {
-        return;
-      }
+    if (!containerEl) {
+      return;
+    }
 
-      containerRef.current.style.position = 'relative';
-      containerRef.current.appendChild(statsContainer);
+    containerEl.style.position = 'relative';
+    containerEl.appendChild(statsContainer);
       statsContainerRef.current = statsContainer;
 
-      // 性能统计逻辑
+      // 摘要与图表容器
+      const summaryDiv = document.createElement('div');
+      summaryDiv.style.marginBottom = '8px';
+      summaryDiv.style.fontSize = '12px';
+      summaryDiv.style.lineHeight = '1.5';
+      statsContainer.appendChild(summaryDiv);
+
+      const chartsWrapper = document.createElement('div');
+      chartsWrapper.style.display = 'flex';
+      chartsWrapper.style.flexDirection = 'column';
+      chartsWrapper.style.gap = '8px';
+      chartsWrapper.style.width = '280px';
+      statsContainer.appendChild(chartsWrapper);
+
+      const createChartBlock = (color: string) => {
+        const block = document.createElement('div');
+        block.style.backgroundColor = 'rgba(255, 255, 255, 0.04)';
+        block.style.padding = '4px 6px';
+        block.style.borderRadius = '4px';
+        block.style.border = `1px solid ${color}40`;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = 260;
+        canvas.height = 70;
+        canvas.style.width = '260px';
+        canvas.style.height = '70px';
+        canvas.style.borderRadius = '3px';
+        canvas.style.background = 'rgba(0, 0, 0, 0.25)';
+
+        block.appendChild(canvas);
+        chartsWrapper.appendChild(block);
+        return canvas;
+      };
+
+      const fpsCanvas = createChartBlock('#4caf50');
+      const frameTimeCanvas = createChartBlock('#ffb74d');
+      const drawCallsCanvas = createChartBlock('#29b6f6');
+
+      // 数据缓存
       let frameCount = 0;
       let lastFpsUpdate = performance.now();
+      const startTime = performance.now();
+      const maxPoints = 120;
+
+      const timeHistory: number[] = [];
+      const fpsHistory: number[] = [];
+      const frameTimeHistory: number[] = [];
+      const drawCallsHistory: number[] = [];
+
+      const drawLineChart = (
+        canvas: HTMLCanvasElement,
+        times: number[],
+        values: number[],
+        color: string
+      ) => {
+        const ctx = canvas.getContext('2d');
+        if (!ctx || values.length === 0) return;
+
+        const w = canvas.width;
+        const h = canvas.height;
+        const padding = 18;
+
+        ctx.clearRect(0, 0, w, h);
+
+        const tMin = times[0];
+        const tMax = times[times.length - 1];
+        const timeRange = Math.max(1, tMax - tMin);
+
+        const vMin = Math.min(...values);
+        const vMax = Math.max(...values);
+        const vRange = vMax - vMin || 1;
+
+        const xScale = (t: number) => padding + ((t - tMin) / timeRange) * (w - padding * 2);
+        const yScale = (v: number) => h - padding - ((v - vMin) / vRange) * (h - padding * 2);
+
+        // 网格
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+        ctx.lineWidth = 1;
+        for (let i = 0; i <= 4; i++) {
+          const y = padding + ((h - padding * 2) / 4) * i;
+          ctx.beginPath();
+          ctx.moveTo(padding, y);
+          ctx.lineTo(w - padding, y);
+          ctx.stroke();
+        }
+
+        // 曲线
+        ctx.beginPath();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        values.forEach((v, idx) => {
+          const x = xScale(times[idx]);
+          const y = yScale(v);
+          if (idx === 0) {
+            ctx.moveTo(x, y);
+          } else {
+            ctx.lineTo(x, y);
+          }
+        });
+        ctx.stroke();
+
+        // 最新点
+        const latestX = xScale(times[times.length - 1]);
+        const latestY = yScale(values[values.length - 1]);
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(latestX, latestY, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 标注
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.font = '10px monospace';
+        ctx.fillText(`t=${tMax.toFixed(1)}s`, w - padding - 48, h - 6);
+        ctx.fillText(`${vMax.toFixed(1)}`, padding, yScale(vMax) - 6);
+        ctx.fillText(`${vMin.toFixed(1)}`, padding, Math.min(h - 6, yScale(vMin) + 12));
+      };
 
       const renderListener = () => {
         // 在监听器中也要检查 viewer 是否仍然有效
@@ -102,6 +219,7 @@ export function PerformanceStats({
         if (delta > 1000) {
           const fps = Math.round((frameCount * 1000) / delta);
           const avgFrameTime = delta / frameCount;
+          const elapsedSeconds = (now - startTime) / 1000;
           
           // 安全地获取 drawCalls
           let drawCalls = 0;
@@ -115,14 +233,36 @@ export function PerformanceStats({
             console.warn('Failed to get draw calls:', error);
           }
 
+          // 数据入列
+          timeHistory.push(elapsedSeconds);
+          fpsHistory.push(fps);
+          frameTimeHistory.push(avgFrameTime);
+          drawCallsHistory.push(drawCalls);
+
+          if (timeHistory.length > maxPoints) {
+            timeHistory.shift();
+            fpsHistory.shift();
+            frameTimeHistory.shift();
+            drawCallsHistory.shift();
+          }
+
           let tilesetStatsHtml = '';
           let tilesetFound = false;
           const primitives = viewer.scene.primitives;
+          type TilesetStats = {
+            texturesByteLength?: number;
+            geometryByteLength?: number;
+            visited?: number;
+            numberOfTriangles?: number;
+            numberOfFeaturesSelected?: number;
+            numberOfFeaturesLoaded?: number;
+          };
+
           for (let i = 0; i < primitives.length; i++) {
             const p = primitives.get(i);
             if (p instanceof Cesium3DTileset) {
               tilesetFound = true;
-              const stats = (p as any).statistics;
+              const stats = (p as Cesium3DTileset & { statistics?: TilesetStats }).statistics;
               if (stats) {
                 const texturesByteLength = stats.texturesByteLength || 0;
                 const geometryByteLength = stats.geometryByteLength || 0;
@@ -148,9 +288,17 @@ export function PerformanceStats({
             tilesetStatsHtml = `<br/>--- 3D Tileset ---<br/>(Waiting for stats...)`;
           }
 
-          if (statsContainer && statsContainer.parentNode) {
-            statsContainer.innerHTML = `FPS: ${fps}<br/>Frame Time: ${avgFrameTime.toFixed(2)} ms<br/>Draw Calls: ${drawCalls}${tilesetStatsHtml}`;
+          if (summaryDiv && summaryDiv.parentNode) {
+            summaryDiv.innerHTML = `
+              FPS: ${fps} ｜ Frame Time: ${avgFrameTime.toFixed(2)} ms ｜ Draw Calls: ${drawCalls}
+              ${tilesetStatsHtml}
+            `;
           }
+
+          // 绘制折线图
+          drawLineChart(fpsCanvas, timeHistory, fpsHistory, '#4caf50');
+          drawLineChart(frameTimeCanvas, timeHistory, frameTimeHistory, '#ffb74d');
+          drawLineChart(drawCallsCanvas, timeHistory, drawCallsHistory, '#29b6f6');
 
           lastFpsUpdate = now;
           frameCount = 0;
@@ -165,8 +313,8 @@ export function PerformanceStats({
       } catch (error) {
         console.error('Failed to add render listener:', error);
         // 清理已创建的容器
-        if (statsContainerRef.current && containerRef.current?.contains(statsContainerRef.current)) {
-          containerRef.current.removeChild(statsContainerRef.current);
+        if (statsContainerRef.current && containerElRef.current?.contains(statsContainerRef.current)) {
+          containerElRef.current.removeChild(statsContainerRef.current);
         }
       }
     };
@@ -186,8 +334,8 @@ export function PerformanceStats({
           console.warn('Failed to remove render listener:', error);
         }
       }
-      if (statsContainerRef.current && containerRef.current?.contains(statsContainerRef.current)) {
-        containerRef.current.removeChild(statsContainerRef.current);
+      if (statsContainerRef.current && containerElRef.current?.contains(statsContainerRef.current)) {
+        containerElRef.current.removeChild(statsContainerRef.current);
       }
     };
   }, [viewer, containerRef, position, style]);

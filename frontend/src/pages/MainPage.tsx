@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import CesiumViewer from '../components/cesium/CesiumViewer';
 import MenuBar from '../components/MenuBar';
 import type { CesiumViewerRef } from '../types';
@@ -10,15 +10,20 @@ import '../App.css';
  */
 function MainPage() {
   const cesiumViewerRef = useRef<CesiumViewerRef>(null);
+  const [performanceStatsEnabled, setPerformanceStatsEnabled] = useState(true);
 
   return (
     <div className="main-page">
       {/* 顶部菜单栏 */}
-      <MenuBar cesiumViewerRef={cesiumViewerRef} />
+      <MenuBar
+        cesiumViewerRef={cesiumViewerRef}
+        performanceStatsEnabled={performanceStatsEnabled}
+        onTogglePerformanceStats={setPerformanceStatsEnabled}
+      />
       
       {/* Cesium 视图作为主视图，全屏显示 */}
       <div className="cesium-viewport">
-        <CesiumViewer ref={cesiumViewerRef} />
+        <CesiumViewer ref={cesiumViewerRef} showPerformanceStats={performanceStatsEnabled} />
       </div>
     </div>
   );

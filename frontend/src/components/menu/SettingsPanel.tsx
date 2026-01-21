@@ -19,6 +19,8 @@ interface SettingsPanelProps {
   ) => void;
   scale: string;
   onChangeScale: (value: string) => void;
+  performanceStatsEnabled: boolean;
+  onTogglePerformanceStats: (enabled: boolean) => void;
 }
 
 function SettingsPanel({
@@ -37,6 +39,8 @@ function SettingsPanel({
   onChangeRotation,
   scale,
   onChangeScale,
+  performanceStatsEnabled,
+  onTogglePerformanceStats,
 }: SettingsPanelProps) {
   const handleBoundingVolumeChange = (event: ChangeEvent<HTMLInputElement>) => {
     onToggleBoundingVolume(event.target.checked);
@@ -67,6 +71,10 @@ function SettingsPanel({
 
   const handleScaleInput = (event: ChangeEvent<HTMLInputElement>) => {
     onChangeScale(event.target.value);
+  };
+
+  const handlePerformanceStatsChange = (event: ChangeEvent<HTMLInputElement>) => {
+    onTogglePerformanceStats(event.target.checked);
   };
 
   return (
@@ -101,6 +109,21 @@ function SettingsPanel({
             type="checkbox"
             checked={debugColorizeTiles}
             onChange={handleColorizeTilesChange}
+          />
+          <span className="toggle-slider" />
+        </label>
+      </div>
+
+      <div className="setting-item">
+        <div className="setting-text">
+          <div className="setting-title">性能面板</div>
+          <div className="setting-subtitle">显示 FPS / FrameTime / DrawCalls 折线</div>
+        </div>
+        <label className="toggle-switch">
+          <input
+            type="checkbox"
+            checked={performanceStatsEnabled}
+            onChange={handlePerformanceStatsChange}
           />
           <span className="toggle-slider" />
         </label>

@@ -9,6 +9,8 @@ import './MenuBar.css';
 
 interface MenuBarProps {
   cesiumViewerRef: React.RefObject<CesiumViewerRef | null>;
+  performanceStatsEnabled: boolean;
+  onTogglePerformanceStats: (enabled: boolean) => void;
 }
 
 type MenuItem = 'instancing' | 'tiles' | 'settings' | null;
@@ -17,7 +19,7 @@ type MenuItem = 'instancing' | 'tiles' | 'settings' | null;
  * 顶部菜单栏组件
  * 包含多个功能菜单项
  */
-function MenuBar({ cesiumViewerRef }: MenuBarProps) {
+function MenuBar({ cesiumViewerRef, performanceStatsEnabled, onTogglePerformanceStats }: MenuBarProps) {
   const [activeMenu, setActiveMenu] = useState<MenuItem>(null);
   const [isClosing, setIsClosing] = useState(false);
   const [isLayerManagerOpen, setIsLayerManagerOpen] = useState(false);
@@ -215,6 +217,8 @@ function MenuBar({ cesiumViewerRef }: MenuBarProps) {
                 onChangeRotation={handleRotationChange}
                 scale={scaleInput}
                 onChangeScale={handleScaleChange}
+                performanceStatsEnabled={performanceStatsEnabled}
+                onTogglePerformanceStats={onTogglePerformanceStats}
               />
             )}
           </div>
