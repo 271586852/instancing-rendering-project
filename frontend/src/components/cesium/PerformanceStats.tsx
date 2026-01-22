@@ -266,7 +266,15 @@ export function PerformanceStats({
               if (stats) {
                 const texturesByteLength = stats.texturesByteLength || 0;
                 const geometryByteLength = stats.geometryByteLength || 0;
-                const memory = (texturesByteLength + geometryByteLength) / (1024 * 1024);
+                const toMb = (bytes: number) => bytes / (1024 * 1024);
+                const formatMb = (value: number) =>
+                  value.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 8,
+                  });
+                const texturesMb = toMb(texturesByteLength);
+                const geometryMb = toMb(geometryByteLength);
+                const totalMb = texturesMb + geometryMb;
                 
                 const visited = stats.visited || 0;
                 const triangles = stats.numberOfTriangles || 0;
@@ -277,7 +285,9 @@ export function PerformanceStats({
                   <br/>Visited Tiles: ${visited.toLocaleString()}
                   <br/>Triangles: ${triangles.toLocaleString()}
                   <br/>Features: ${features.toLocaleString()}
-                  <br/>Memory (MB): ${memory.toFixed(2)}
+                  <br/>Textures (MB): ${formatMb(texturesMb)}
+                  <br/>Geometry (MB): ${formatMb(geometryMb)}
+                  <br/>Memory (MB): ${formatMb(totalMb)}
                 `;
                 break; // 只显示找到的第一个瓦片集的统计信息
               }
