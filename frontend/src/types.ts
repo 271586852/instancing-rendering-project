@@ -17,6 +17,9 @@ export interface TilesetLayerInfo {
 export interface TilesetDebugOptions {
   debugShowBoundingVolume?: boolean;
   debugColorizeTiles?: boolean;
+  debugShowGeometricError?: boolean;
+  debugShowRenderingStatistics?: boolean;
+  debugShowMemoryUsage?: boolean;
 }
 
 // Globe 相关开关
@@ -52,6 +55,7 @@ export interface CesiumViewerHandles {
   setGlobeOptions: (options: GlobeOptions) => void;
   setTilesetTransform: (options: TilesetTransformOptions) => void;
   setTilesetTransformForLayer: (id: string, options: TilesetTransformOptions) => void;
+  setTilesetScreenSpaceError: (value: number) => void;
 }
 
 // Cesium Viewer 的 ref 接口

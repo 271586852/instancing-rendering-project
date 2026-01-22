@@ -3,8 +3,16 @@ import type { ChangeEvent } from 'react';
 interface SettingsPanelProps {
   debugShowBoundingVolume: boolean;
   debugColorizeTiles: boolean;
+  debugShowGeometricError: boolean;
+  debugShowRenderingStatistics: boolean;
+  debugShowMemoryUsage: boolean;
   onToggleBoundingVolume: (enabled: boolean) => void;
   onToggleColorizeTiles: (enabled: boolean) => void;
+  onToggleGeometricError: (enabled: boolean) => void;
+  onToggleRenderingStatistics: (enabled: boolean) => void;
+  onToggleMemoryUsage: (enabled: boolean) => void;
+  screenSpaceError: number;
+  onChangeScreenSpaceError: (value: number) => void;
   showGlobe: boolean;
   depthTestAgainstTerrain: boolean;
   onToggleShowGlobe: (enabled: boolean) => void;
@@ -26,8 +34,16 @@ interface SettingsPanelProps {
 function SettingsPanel({
   debugShowBoundingVolume,
   debugColorizeTiles,
+  debugShowGeometricError,
+  debugShowRenderingStatistics,
+  debugShowMemoryUsage,
   onToggleBoundingVolume,
   onToggleColorizeTiles,
+  onToggleGeometricError,
+  onToggleRenderingStatistics,
+  onToggleMemoryUsage,
+  screenSpaceError,
+  onChangeScreenSpaceError,
   showGlobe,
   depthTestAgainstTerrain,
   onToggleShowGlobe,
@@ -48,6 +64,26 @@ function SettingsPanel({
 
   const handleColorizeTilesChange = (event: ChangeEvent<HTMLInputElement>) => {
     onToggleColorizeTiles(event.target.checked);
+  };
+
+  const handleGeometricErrorChange = (event: ChangeEvent<HTMLInputElement>) => {
+    onToggleGeometricError(event.target.checked);
+  };
+
+  const handleRenderingStatisticsChange = (event: ChangeEvent<HTMLInputElement>) => {
+    onToggleRenderingStatistics(event.target.checked);
+  };
+
+  const handleMemoryUsageChange = (event: ChangeEvent<HTMLInputElement>) => {
+    onToggleMemoryUsage(event.target.checked);
+  };
+
+  const handleScreenSpaceErrorRange = (event: ChangeEvent<HTMLInputElement>) => {
+    onChangeScreenSpaceError(Number(event.target.value));
+  };
+
+  const handleScreenSpaceErrorInput = (event: ChangeEvent<HTMLInputElement>) => {
+    onChangeScreenSpaceError(Number(event.target.value));
   };
 
   const handleShowGlobeChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -112,6 +148,81 @@ function SettingsPanel({
           />
           <span className="toggle-slider" />
         </label>
+      </div>
+
+      <div className="setting-item">
+        <div className="setting-text">
+          <div className="setting-title">显示几何误差</div>
+          <div className="setting-subtitle">tileset.debugShowGeometricError</div>
+        </div>
+        <label className="toggle-switch">
+          <input
+            type="checkbox"
+            checked={debugShowGeometricError}
+            onChange={handleGeometricErrorChange}
+          />
+          <span className="toggle-slider" />
+        </label>
+      </div>
+
+      <div className="setting-item">
+        <div className="setting-text">
+          <div className="setting-title">渲染统计</div>
+          <div className="setting-subtitle">tileset.debugShowRenderingStatistics</div>
+        </div>
+        <label className="toggle-switch">
+          <input
+            type="checkbox"
+            checked={debugShowRenderingStatistics}
+            onChange={handleRenderingStatisticsChange}
+          />
+          <span className="toggle-slider" />
+        </label>
+      </div>
+
+      <div className="setting-item">
+        <div className="setting-text">
+          <div className="setting-title">内存统计</div>
+          <div className="setting-subtitle">tileset.debugShowMemoryUsage</div>
+        </div>
+        <label className="toggle-switch">
+          <input
+            type="checkbox"
+            checked={debugShowMemoryUsage}
+            onChange={handleMemoryUsageChange}
+          />
+          <span className="toggle-slider" />
+        </label>
+      </div>
+
+      <div className="setting-item setting-item-column">
+        <div className="setting-text">
+          <div className="setting-title">LOD 严格度</div>
+          <div className="setting-subtitle">tileset.maximumScreenSpaceError</div>
+        </div>
+        <div className="slider-row">
+          <input
+            className="range-input"
+            type="range"
+            min={1}
+            max={64}
+            step={1}
+            value={screenSpaceError}
+            onChange={handleScreenSpaceErrorRange}
+          />
+          <input
+            className="number-input"
+            type="number"
+            min={1}
+            max={64}
+            step={1}
+            value={screenSpaceError}
+            onChange={handleScreenSpaceErrorInput}
+          />
+        </div>
+        <div className="setting-subtitle">
+          数值越小越严格（更精细），越大越粗略（更省性能）
+        </div>
       </div>
 
       <div className="setting-item">

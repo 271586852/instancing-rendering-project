@@ -275,6 +275,12 @@
   background: #242424;
 }
 
+.setting-item-column {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+
 .setting-text {
   display: flex;
   flex-direction: column;
@@ -289,6 +295,31 @@
 .setting-subtitle {
   font-size: 0.85em;
   color: #8a8a8a;
+}
+
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.range-input {
+  flex: 1;
+}
+
+.number-input {
+  width: 90px;
+  padding: 6px 8px;
+  background-color: #2f2f2f;
+  border: 1px solid #444;
+  border-radius: 6px;
+  color: #fff;
+}
+
+.number-input:focus,
+.range-input:focus {
+  outline: none;
+  border-color: #646cff;
 }
 
 .toggle-switch {

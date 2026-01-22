@@ -22,6 +22,9 @@ type NamedTileset = Cesium3DTileset & {
   customName?: string;
   url?: string;
   debugShowStatistics?: boolean;
+  debugShowGeometricError?: boolean;
+  debugShowRenderingStatistics?: boolean;
+  debugShowMemoryUsage?: boolean;
 };
 
 interface CesiumViewerProps {
@@ -42,7 +45,11 @@ const CesiumViewer = forwardRef<CesiumViewerHandles, CesiumViewerProps>(
     const debugOptionsRef = useRef<TilesetDebugOptions>({
       debugShowBoundingVolume: true,
       debugColorizeTiles: true,
+      debugShowGeometricError: false,
+      debugShowRenderingStatistics: false,
+      debugShowMemoryUsage: false,
     });
+    const screenSpaceErrorRef = useRef<number>(16);
     const globeOptionsRef = useRef<GlobeOptions>({
       showGlobe: true,
       depthTestAgainstTerrain: true,
@@ -62,6 +69,9 @@ const CesiumViewer = forwardRef<CesiumViewerHandles, CesiumViewerProps>(
     const applyDebugOptionsToTileset = (tileset: NamedTileset) => {
       tileset.debugShowBoundingVolume = !!debugOptionsRef.current.debugShowBoundingVolume;
       tileset.debugColorizeTiles = !!debugOptionsRef.current.debugColorizeTiles;
+      tileset.debugShowGeometricError = !!debugOptionsRef.current.debugShowGeometricError;
+      tileset.debugShowRenderingStatistics = !!debugOptionsRef.current.debugShowRenderingStatistics;
+      tileset.debugShowMemoryUsage = !!debugOptionsRef.current.debugShowMemoryUsage;
     };
 
     const buildModelMatrix = (options: TilesetTransformOptions) => {
@@ -87,6 +97,10 @@ const CesiumViewer = forwardRef<CesiumViewerHandles, CesiumViewerProps>(
     const applyTransformToTileset = (tileset: NamedTileset) => {
       const matrix = buildModelMatrix(transformOptionsRef.current);
       tileset.modelMatrix = matrix;
+    };
+
+    const applyScreenSpaceErrorToTileset = (tileset: NamedTileset) => {
+      tileset.maximumScreenSpaceError = screenSpaceErrorRef.current;
     };
 
     const applyGlobeOptions = () => {
@@ -122,6 +136,18 @@ const CesiumViewer = forwardRef<CesiumViewerHandles, CesiumViewerProps>(
       }
     };
 
+    const applyScreenSpaceErrorToAllTilesets = () => {
+      const viewerInstance = viewerRef.current;
+      if (!viewerInstance || viewerInstance.isDestroyed()) return;
+      const { primitives } = viewerInstance.scene;
+      for (let i = 0; i < primitives.length; i++) {
+        const primitive = primitives.get(i);
+        if (primitive instanceof Cesium3DTileset) {
+          applyScreenSpaceErrorToTileset(primitive);
+        }
+      }
+    };
+
     useImperativeHandle(ref, () => ({
       loadTileset: async (url: string) => {
         const viewerInstance = viewerRef.current;
@@ -132,6 +158,7 @@ const CesiumViewer = forwardRef<CesiumViewerHandles, CesiumViewerProps>(
             tileset.customName = url.split('/').pop() || 'Untitled Tileset';
             applyDebugOptionsToTileset(tileset);
             applyTransformToTileset(tileset);
+            applyScreenSpaceErrorToTileset(tileset);
             viewerInstance.scene.primitives.add(tileset);
             await viewerInstance.zoomTo(tileset);
           } catch (error) {
@@ -276,6 +303,11 @@ const CesiumViewer = forwardRef<CesiumViewerHandles, CesiumViewerProps>(
             }
           }
         }
+      },
+
+      setTilesetScreenSpaceError: (value: number) => {
+        screenSpaceErrorRef.current = value;
+        applyScreenSpaceErrorToAllTilesets();
       },
     }));
 

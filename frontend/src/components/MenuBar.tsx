@@ -25,6 +25,10 @@ function MenuBar({ cesiumViewerRef, performanceStatsEnabled, onTogglePerformance
   const [isLayerManagerOpen, setIsLayerManagerOpen] = useState(false);
   const [debugShowBoundingVolume, setDebugShowBoundingVolume] = useState(true);
   const [debugColorizeTiles, setDebugColorizeTiles] = useState(true);
+  const [debugShowGeometricError, setDebugShowGeometricError] = useState(false);
+  const [debugShowRenderingStatistics, setDebugShowRenderingStatistics] = useState(false);
+  const [debugShowMemoryUsage, setDebugShowMemoryUsage] = useState(false);
+  const [screenSpaceError, setScreenSpaceError] = useState(16);
   const [showGlobe, setShowGlobe] = useState(true);
   const [depthTestAgainstTerrain, setDepthTestAgainstTerrain] = useState(true);
   const [translationInput, setTranslationInput] = useState({ x: '0', y: '0', z: '0' });
@@ -72,6 +76,27 @@ function MenuBar({ cesiumViewerRef, performanceStatsEnabled, onTogglePerformance
     });
   };
 
+  const handleToggleGeometricError = (enabled: boolean) => {
+    setDebugShowGeometricError(enabled);
+    cesiumViewerRef.current?.setTilesetDebugOptions({
+      debugShowGeometricError: enabled,
+    });
+  };
+
+  const handleToggleRenderingStatistics = (enabled: boolean) => {
+    setDebugShowRenderingStatistics(enabled);
+    cesiumViewerRef.current?.setTilesetDebugOptions({
+      debugShowRenderingStatistics: enabled,
+    });
+  };
+
+  const handleToggleMemoryUsage = (enabled: boolean) => {
+    setDebugShowMemoryUsage(enabled);
+    cesiumViewerRef.current?.setTilesetDebugOptions({
+      debugShowMemoryUsage: enabled,
+    });
+  };
+
   const handleToggleShowGlobe = (enabled: boolean) => {
     setShowGlobe(enabled);
     cesiumViewerRef.current?.setGlobeOptions({
@@ -103,6 +128,11 @@ function MenuBar({ cesiumViewerRef, performanceStatsEnabled, onTogglePerformance
     return Number.isNaN(num) ? fallback : num;
   };
 
+  const clampNumber = (val: number, min: number, max: number) => {
+    if (Number.isNaN(val)) return min;
+    return Math.min(Math.max(val, min), max);
+  };
+
   const handleApplyTransform = () => {
     const translation = {
       x: safeNumber(translationInput.x, 0),
@@ -127,8 +157,18 @@ function MenuBar({ cesiumViewerRef, performanceStatsEnabled, onTogglePerformance
     cesiumViewerRef.current?.setTilesetDebugOptions({
       debugShowBoundingVolume,
       debugColorizeTiles,
+      debugShowGeometricError,
+      debugShowRenderingStatistics,
+      debugShowMemoryUsage,
     });
-  }, [debugShowBoundingVolume, debugColorizeTiles, cesiumViewerRef]);
+  }, [
+    debugShowBoundingVolume,
+    debugColorizeTiles,
+    debugShowGeometricError,
+    debugShowRenderingStatistics,
+    debugShowMemoryUsage,
+    cesiumViewerRef,
+  ]);
 
   useEffect(() => {
     cesiumViewerRef.current?.setGlobeOptions({
@@ -136,6 +176,10 @@ function MenuBar({ cesiumViewerRef, performanceStatsEnabled, onTogglePerformance
       depthTestAgainstTerrain,
     });
   }, [showGlobe, depthTestAgainstTerrain, cesiumViewerRef]);
+
+  useEffect(() => {
+    cesiumViewerRef.current?.setTilesetScreenSpaceError(screenSpaceError);
+  }, [screenSpaceError, cesiumViewerRef]);
 
   const getPanelTitle = () => {
     if (activeMenu === 'instancing') return 'Instancing Tool';
@@ -204,8 +248,18 @@ function MenuBar({ cesiumViewerRef, performanceStatsEnabled, onTogglePerformance
               <SettingsPanel
                 debugShowBoundingVolume={debugShowBoundingVolume}
                 debugColorizeTiles={debugColorizeTiles}
+                debugShowGeometricError={debugShowGeometricError}
+                debugShowRenderingStatistics={debugShowRenderingStatistics}
+                debugShowMemoryUsage={debugShowMemoryUsage}
                 onToggleBoundingVolume={handleToggleBoundingVolume}
                 onToggleColorizeTiles={handleToggleColorizeTiles}
+                onToggleGeometricError={handleToggleGeometricError}
+                onToggleRenderingStatistics={handleToggleRenderingStatistics}
+                onToggleMemoryUsage={handleToggleMemoryUsage}
+                screenSpaceError={screenSpaceError}
+                onChangeScreenSpaceError={(value) =>
+                  setScreenSpaceError(clampNumber(value, 1, 64))
+                }
                 showGlobe={showGlobe}
                 depthTestAgainstTerrain={depthTestAgainstTerrain}
                 onToggleShowGlobe={handleToggleShowGlobe}
