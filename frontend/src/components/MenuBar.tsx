@@ -123,6 +123,20 @@ function MenuBar({ cesiumViewerRef, performanceStatsEnabled, onTogglePerformance
     setScaleInput(value);
   };
 
+  const handleExportPerformanceStats = () => {
+    const exported = cesiumViewerRef.current?.exportPerformanceStats?.();
+    if (!exported) {
+      console.warn('No performance data to export yet.');
+    }
+  };
+
+  const handleExportPerformanceChart = () => {
+    const exported = cesiumViewerRef.current?.exportPerformanceChart?.();
+    if (!exported) {
+      console.warn('No performance data to export yet.');
+    }
+  };
+
   const safeNumber = (val: string, fallback = 0) => {
     const num = parseFloat(val);
     return Number.isNaN(num) ? fallback : num;
@@ -273,6 +287,8 @@ function MenuBar({ cesiumViewerRef, performanceStatsEnabled, onTogglePerformance
                 onChangeScale={handleScaleChange}
                 performanceStatsEnabled={performanceStatsEnabled}
                 onTogglePerformanceStats={onTogglePerformanceStats}
+                onExportPerformanceStats={handleExportPerformanceStats}
+                onExportPerformanceChart={handleExportPerformanceChart}
               />
             )}
           </div>

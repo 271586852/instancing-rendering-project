@@ -56,6 +56,8 @@ export interface CesiumViewerHandles {
   setTilesetTransform: (options: TilesetTransformOptions) => void;
   setTilesetTransformForLayer: (id: string, options: TilesetTransformOptions) => void;
   setTilesetScreenSpaceError: (value: number) => void;
+  exportPerformanceStats: () => boolean;
+  exportPerformanceChart: () => boolean;
 }
 
 // Cesium Viewer 的 ref 接口

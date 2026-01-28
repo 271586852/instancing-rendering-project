@@ -367,6 +367,32 @@
   transform: translateX(22px);
 }
 
+.export-button {
+  padding: 6px 10px;
+  background-color: #3e3e3e;
+  color: #fff;
+  border: 1px solid #555;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85em;
+  transition: all 0.2s;
+}
+
+.export-button:hover:not(:disabled) {
+  background-color: #535bf2;
+  border-color: #646cff;
+}
+
+.export-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.export-button-row {
+  display: flex;
+  gap: 8px;
+}
+
 .translation-inputs {
   display: flex;
   gap: 8px;

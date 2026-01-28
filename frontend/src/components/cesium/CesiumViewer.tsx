@@ -42,6 +42,10 @@ const CesiumViewer = forwardRef<CesiumViewerHandles, CesiumViewerProps>(
     const cesiumContainerRef = useRef<HTMLDivElement>(null);
     const viewerRef = useRef<Viewer | null>(null);
     const [viewer, setViewer] = useState<Viewer | null>(null);
+    const performanceExporterRef = useRef<{
+      exportCsv: () => boolean;
+      exportChart: () => boolean;
+    } | null>(null);
     const debugOptionsRef = useRef<TilesetDebugOptions>({
       debugShowBoundingVolume: true,
       debugColorizeTiles: true,
@@ -64,6 +68,18 @@ const CesiumViewer = forwardRef<CesiumViewerHandles, CesiumViewerProps>(
       viewerRef.current = viewerInstance;
       setViewer(viewerInstance);
       applyGlobeOptions();
+    }, []);
+
+    const handleRegisterPerformanceExporter = useCallback(
+      (
+        exporter:
+          | {
+              exportCsv: () => boolean;
+              exportChart: () => boolean;
+            }
+          | null
+      ) => {
+      performanceExporterRef.current = exporter;
     }, []);
 
     const applyDebugOptionsToTileset = (tileset: NamedTileset) => {
@@ -309,6 +325,28 @@ const CesiumViewer = forwardRef<CesiumViewerHandles, CesiumViewerProps>(
         screenSpaceErrorRef.current = value;
         applyScreenSpaceErrorToAllTilesets();
       },
+
+      exportPerformanceStats: () => {
+        const exporter = performanceExporterRef.current;
+        if (!exporter) return false;
+        try {
+          return exporter.exportCsv();
+        } catch (error) {
+          console.error('Failed to export performance stats:', error);
+          return false;
+        }
+      },
+
+      exportPerformanceChart: () => {
+        const exporter = performanceExporterRef.current;
+        if (!exporter) return false;
+        try {
+          return exporter.exportChart();
+        } catch (error) {
+          console.error('Failed to export performance chart:', error);
+          return false;
+        }
+      },
     }));
 
     return (
@@ -322,6 +360,7 @@ const CesiumViewer = forwardRef<CesiumViewerHandles, CesiumViewerProps>(
             viewer={viewer}
             containerRef={cesiumContainerRef}
             position={performanceStatsPosition || { bottom: '10px', left: '10px' }}
+            onRegisterExporter={handleRegisterPerformanceExporter}
           />
         )}
       </div>

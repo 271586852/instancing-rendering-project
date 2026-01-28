@@ -11,6 +11,14 @@ interface PerformanceStatsProps {
     bottom?: string;
   };
   style?: React.CSSProperties;
+  onRegisterExporter?: (
+    exporter:
+      | {
+          exportCsv: () => boolean;
+          exportChart: () => boolean;
+        }
+      | null
+  ) => void;
 }
 
 /**
@@ -22,6 +30,7 @@ export function PerformanceStats({
   containerRef,
   position = { top: '10px', left: '10px' },
   style,
+  onRegisterExporter,
 }: PerformanceStatsProps) {
   const statsContainerRef = useRef<HTMLDivElement | null>(null);
   const containerElRef = useRef<HTMLDivElement | null>(null);
@@ -137,6 +146,165 @@ export function PerformanceStats({
       const fpsHistory: number[] = [];
       const frameTimeHistory: number[] = [];
       const drawCallsHistory: number[] = [];
+      const trianglesHistory: number[] = [];
+
+  const exportRecentMetrics = () => {
+        if (timeHistory.length === 0) return false;
+        const latestTime = timeHistory[timeHistory.length - 1];
+        const cutoff = latestTime - 60;
+        const rows: string[] = [
+          'time_s,fps,frame_time_ms,draw_calls,triangles',
+        ];
+        for (let i = 0; i < timeHistory.length; i++) {
+          const t = timeHistory[i];
+          if (t >= cutoff) {
+            rows.push(
+              [
+                t.toFixed(2),
+                fpsHistory[i],
+                frameTimeHistory[i].toFixed(3),
+                drawCallsHistory[i],
+                trianglesHistory[i],
+              ].join(',')
+            );
+          }
+        }
+        const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `performance_last60s_${Date.now()}.csv`;
+        link.click();
+        URL.revokeObjectURL(url);
+        return true;
+      };
+
+  const exportRecentMetricsChart = () => {
+    if (timeHistory.length === 0) return false;
+    const latestTime = timeHistory[timeHistory.length - 1];
+    const cutoff = latestTime - 60;
+    const times: number[] = [];
+    const fpsValues: number[] = [];
+    const frameTimeValues: number[] = [];
+    const drawCallsValues: number[] = [];
+    const trianglesValues: number[] = [];
+
+    for (let i = 0; i < timeHistory.length; i++) {
+      const t = timeHistory[i];
+      if (t >= cutoff) {
+        times.push(t);
+        fpsValues.push(fpsHistory[i]);
+        frameTimeValues.push(frameTimeHistory[i]);
+        drawCallsValues.push(drawCallsHistory[i]);
+        trianglesValues.push(trianglesHistory[i]);
+      }
+    }
+
+    const chartData = {
+      times,
+      fps: fpsValues,
+      frameTime: frameTimeValues,
+      drawCalls: drawCallsValues,
+      triangles: trianglesValues,
+    };
+
+    const html = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>性能统计折线图（最近60秒）</title>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <style>
+    body { font-family: "Microsoft YaHei", Arial, sans-serif; background: #fff; padding: 20px; }
+    h1 { font-size: 20px; margin: 0 0 16px; color: #333; text-align: center; }
+    #container { width: 1000px; margin: 0 auto; }
+    .chart-box { height: 260px; margin-bottom: 20px; }
+    #btn-export { padding: 10px 16px; background: #007bff; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+    #btn-export:hover { background: #0056b3; }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <h1>性能统计折线图（最近60秒）</h1>
+    <div id="chartA" class="chart-box"></div>
+    <div id="chartB" class="chart-box"></div>
+    <div id="chartC" class="chart-box"></div>
+    <div id="chartD" class="chart-box"></div>
+  </div>
+  <div style="text-align:center;">
+    <button id="btn-export" onclick="exportImage()">导出图片</button>
+  </div>
+  <script>
+    const data = ${JSON.stringify(chartData)};
+    const baseTime = data.times.length > 0 ? data.times[0] : 0;
+    const labels = data.times.map(t => Math.max(0, Math.round(t - baseTime)));
+
+    const chartA = echarts.init(document.getElementById('chartA'));
+    chartA.setOption({
+      tooltip: { trigger: 'axis' },
+      title: { text: 'FPS', left: 'center' },
+      xAxis: { type: 'category', data: labels, axisLabel: { fontSize: 10 } },
+      yAxis: { type: 'value', name: 'FPS' },
+      series: [{ name: 'FPS', type: 'line', data: data.fps }]
+    });
+
+    const chartB = echarts.init(document.getElementById('chartB'));
+    chartB.setOption({
+      tooltip: { trigger: 'axis' },
+      title: { text: 'Frame Time (ms)', left: 'center' },
+      xAxis: { type: 'category', data: labels, axisLabel: { fontSize: 10 } },
+      yAxis: { type: 'value', name: 'ms' },
+      series: [{ name: 'Frame Time (ms)', type: 'line', data: data.frameTime }]
+    });
+
+    const chartC = echarts.init(document.getElementById('chartC'));
+    chartC.setOption({
+      tooltip: { trigger: 'axis' },
+      title: { text: 'Draw Calls', left: 'center' },
+      xAxis: { type: 'category', data: labels, axisLabel: { fontSize: 10 } },
+      yAxis: { type: 'value', name: 'Draw Calls' },
+      series: [{ name: 'Draw Calls', type: 'line', data: data.drawCalls }]
+    });
+
+    const chartD = echarts.init(document.getElementById('chartD'));
+    chartD.setOption({
+      tooltip: { trigger: 'axis' },
+      title: { text: 'Triangles', left: 'center' },
+      xAxis: { type: 'category', data: labels, axisLabel: { fontSize: 10 } },
+      yAxis: { type: 'value', name: 'Triangles' },
+      series: [{ name: 'Triangles', type: 'line', data: data.triangles }]
+    });
+
+    function exportImage() {
+      const element = document.getElementById('container');
+      html2canvas(element, { scale: 2 }).then(canvas => {
+        const link = document.createElement('a');
+        link.download = 'performance_last60s_chart.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      });
+    }
+
+    window.addEventListener('resize', () => {
+      chartA.resize();
+      chartB.resize();
+      chartC.resize();
+      chartD.resize();
+    });
+  </script>
+</body>
+</html>`;
+
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `performance_last60s_${Date.now()}.html`;
+    link.click();
+    URL.revokeObjectURL(url);
+    return true;
+  };
 
       const drawLineChart = (
         canvas: HTMLCanvasElement,
@@ -233,69 +401,122 @@ export function PerformanceStats({
             console.warn('Failed to get draw calls:', error);
           }
 
-          // 数据入列
-          timeHistory.push(elapsedSeconds);
-          fpsHistory.push(fps);
-          frameTimeHistory.push(avgFrameTime);
-          drawCallsHistory.push(drawCalls);
-
-          if (timeHistory.length > maxPoints) {
-            timeHistory.shift();
-            fpsHistory.shift();
-            frameTimeHistory.shift();
-            drawCallsHistory.shift();
-          }
-
           let tilesetStatsHtml = '';
           let tilesetFound = false;
+          let tilesetStatsFound = false;
           const primitives = viewer.scene.primitives;
           type TilesetStats = {
             texturesByteLength?: number;
             geometryByteLength?: number;
             visited?: number;
-            numberOfTriangles?: number;
+            numberOfTrianglesSelected?: number;
             numberOfFeaturesSelected?: number;
             numberOfFeaturesLoaded?: number;
+          };
+          type TileContentStats = {
+            numberOfTriangles?: number;
+          };
+          type TileContent = {
+            trianglesLength?: number;
+            innerContents?: TileContent[];
+            statistics?: TileContentStats;
+            _statistics?: TileContentStats;
+            _model?: { statistics?: TileContentStats };
+          };
+          type SelectedTile = {
+            content?: TileContent;
+          };
+          type TilesetInternal = Cesium3DTileset & {
+            statistics?: TilesetStats;
+            _selectedTiles?: SelectedTile[];
+          };
+
+          let totalTexturesBytes = 0;
+          let totalGeometryBytes = 0;
+          let totalVisited = 0;
+          let totalTriangles = 0;
+          let totalFeatures = 0;
+          const getContentTriangles = (content?: TileContent): number => {
+            if (!content) return 0;
+            let sum = content.trianglesLength ?? 0;
+            if (content.statistics?.numberOfTriangles) {
+              sum = Math.max(sum, content.statistics.numberOfTriangles);
+            }
+            if (content._statistics?.numberOfTriangles) {
+              sum = Math.max(sum, content._statistics.numberOfTriangles);
+            }
+            if (content._model?.statistics?.numberOfTriangles) {
+              sum = Math.max(sum, content._model.statistics.numberOfTriangles);
+            }
+            const innerContents = content.innerContents;
+            if (innerContents && innerContents.length > 0) {
+              for (const inner of innerContents) {
+                sum += getContentTriangles(inner);
+              }
+            }
+            return sum;
           };
 
           for (let i = 0; i < primitives.length; i++) {
             const p = primitives.get(i);
             if (p instanceof Cesium3DTileset) {
               tilesetFound = true;
-              const stats = (p as Cesium3DTileset & { statistics?: TilesetStats }).statistics;
+              const tileset = p as TilesetInternal;
+              const stats = tileset.statistics;
               if (stats) {
-                const texturesByteLength = stats.texturesByteLength || 0;
-                const geometryByteLength = stats.geometryByteLength || 0;
-                const toMb = (bytes: number) => bytes / (1024 * 1024);
-                const formatMb = (value: number) =>
-                  value.toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 8,
-                  });
-                const texturesMb = toMb(texturesByteLength);
-                const geometryMb = toMb(geometryByteLength);
-                const totalMb = texturesMb + geometryMb;
-                
-                const visited = stats.visited || 0;
-                const triangles = stats.numberOfTriangles || 0;
-                const features = stats.numberOfFeaturesSelected || stats.numberOfFeaturesLoaded || 0;
-
-                tilesetStatsHtml = `
-                  <br/>--- 3D Tileset ---
-                  <br/>Visited Tiles: ${visited.toLocaleString()}
-                  <br/>Triangles: ${triangles.toLocaleString()}
-                  <br/>Features: ${features.toLocaleString()}
-                  <br/>Textures (MB): ${formatMb(texturesMb)}
-                  <br/>Geometry (MB): ${formatMb(geometryMb)}
-                  <br/>Memory (MB): ${formatMb(totalMb)}
-                `;
-                break; // 只显示找到的第一个瓦片集的统计信息
+                tilesetStatsFound = true;
+                totalTexturesBytes += stats.texturesByteLength ?? 0;
+                totalGeometryBytes += stats.geometryByteLength ?? 0;
+                totalVisited += stats.visited ?? 0;
+                let triangles = stats.numberOfTrianglesSelected ?? 0;
+                if (triangles === 0 && tileset._selectedTiles && tileset._selectedTiles.length > 0) {
+                  for (const tile of tileset._selectedTiles) {
+                    triangles += getContentTriangles(tile.content);
+                  }
+                }
+                totalTriangles += triangles;
+                totalFeatures += stats.numberOfFeaturesSelected ?? stats.numberOfFeaturesLoaded ?? 0;
               }
             }
           }
 
-          if (tilesetFound && !tilesetStatsHtml) {
+          if (tilesetFound && tilesetStatsFound) {
+            const toMb = (bytes: number) => bytes / (1024 * 1024);
+            const formatMb = (value: number) =>
+              value.toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 8,
+              });
+            const texturesMb = toMb(totalTexturesBytes);
+            const geometryMb = toMb(totalGeometryBytes);
+            const totalMb = texturesMb + geometryMb;
+
+            tilesetStatsHtml = `
+              <br/>--- 3D Tileset (All) ---
+              <br/>Visited Tiles: ${totalVisited.toLocaleString()}
+              <br/>Triangles: ${totalTriangles.toLocaleString()}
+              <br/>Features: ${totalFeatures.toLocaleString()}
+              <br/>Textures (MB): ${formatMb(texturesMb)}
+              <br/>Geometry (MB): ${formatMb(geometryMb)}
+              <br/>Memory (MB): ${formatMb(totalMb)}
+            `;
+          } else if (tilesetFound && !tilesetStatsFound) {
             tilesetStatsHtml = `<br/>--- 3D Tileset ---<br/>(Waiting for stats...)`;
+          }
+
+          // 数据入列
+          timeHistory.push(elapsedSeconds);
+          fpsHistory.push(fps);
+          frameTimeHistory.push(avgFrameTime);
+          drawCallsHistory.push(drawCalls);
+          trianglesHistory.push(totalTriangles);
+
+          if (timeHistory.length > maxPoints) {
+            timeHistory.shift();
+            fpsHistory.shift();
+            frameTimeHistory.shift();
+            drawCallsHistory.shift();
+            trianglesHistory.shift();
           }
 
           if (summaryDiv && summaryDiv.parentNode) {
@@ -319,6 +540,10 @@ export function PerformanceStats({
       
       // 安全地添加事件监听器
       try {
+        onRegisterExporter?.({
+          exportCsv: exportRecentMetrics,
+          exportChart: exportRecentMetricsChart,
+        });
         viewer.scene.postRender.addEventListener(renderListener);
       } catch (error) {
         console.error('Failed to add render listener:', error);
@@ -347,8 +572,9 @@ export function PerformanceStats({
       if (statsContainerRef.current && containerElRef.current?.contains(statsContainerRef.current)) {
         containerElRef.current.removeChild(statsContainerRef.current);
       }
+      onRegisterExporter?.(null);
     };
-  }, [viewer, containerRef, position, style]);
+  }, [viewer, containerRef, position, style, onRegisterExporter]);
 
   return null; // 此组件不渲染任何内容，只负责性能监控
 }

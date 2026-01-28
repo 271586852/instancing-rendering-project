@@ -29,6 +29,8 @@ interface SettingsPanelProps {
   onChangeScale: (value: string) => void;
   performanceStatsEnabled: boolean;
   onTogglePerformanceStats: (enabled: boolean) => void;
+  onExportPerformanceStats: () => void;
+  onExportPerformanceChart: () => void;
 }
 
 function SettingsPanel({
@@ -57,6 +59,8 @@ function SettingsPanel({
   onChangeScale,
   performanceStatsEnabled,
   onTogglePerformanceStats,
+  onExportPerformanceStats,
+  onExportPerformanceChart,
 }: SettingsPanelProps) {
   const handleBoundingVolumeChange = (event: ChangeEvent<HTMLInputElement>) => {
     onToggleBoundingVolume(event.target.checked);
@@ -111,6 +115,14 @@ function SettingsPanel({
 
   const handlePerformanceStatsChange = (event: ChangeEvent<HTMLInputElement>) => {
     onTogglePerformanceStats(event.target.checked);
+  };
+
+  const handleExportPerformanceStats = () => {
+    onExportPerformanceStats();
+  };
+
+  const handleExportPerformanceChart = () => {
+    onExportPerformanceChart();
   };
 
   return (
@@ -238,6 +250,31 @@ function SettingsPanel({
           />
           <span className="toggle-slider" />
         </label>
+      </div>
+
+      <div className="setting-item">
+        <div className="setting-text">
+          <div className="setting-title">导出性能数据</div>
+          <div className="setting-subtitle">最近 60 秒：FrameTime / FPS / DrawCalls / Triangles</div>
+        </div>
+        <div className="export-button-row">
+          <button
+            className="export-button"
+            type="button"
+            onClick={handleExportPerformanceStats}
+            disabled={!performanceStatsEnabled}
+          >
+            导出CSV
+          </button>
+          <button
+            className="export-button"
+            type="button"
+            onClick={handleExportPerformanceChart}
+            disabled={!performanceStatsEnabled}
+          >
+            导出折线图
+          </button>
+        </div>
       </div>
 
       <div className="setting-item">
