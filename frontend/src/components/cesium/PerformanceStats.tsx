@@ -321,12 +321,27 @@ export function PerformanceStats({
 
         ctx.clearRect(0, 0, w, h);
 
-        const tMin = times[0];
-        const tMax = times[times.length - 1];
+        // 只使用最近60秒的数据
+        const latestTime = times[times.length - 1];
+        const cutoffTime = latestTime - 60;
+        const filteredTimes: number[] = [];
+        const filteredValues: number[] = [];
+
+        for (let i = 0; i < times.length; i++) {
+          if (times[i] >= cutoffTime) {
+            filteredTimes.push(times[i]);
+            filteredValues.push(values[i]);
+          }
+        }
+
+        if (filteredTimes.length === 0) return;
+
+        const tMin = filteredTimes[0];
+        const tMax = filteredTimes[filteredTimes.length - 1];
         const timeRange = Math.max(1, tMax - tMin);
 
-        const vMin = Math.min(...values);
-        const vMax = Math.max(...values);
+        const vMin = Math.min(...filteredValues);
+        const vMax = Math.max(...filteredValues);
         const vRange = vMax - vMin || 1;
 
         const xScale = (t: number) => padding + ((t - tMin) / timeRange) * (w - padding * 2);
@@ -347,8 +362,8 @@ export function PerformanceStats({
         ctx.beginPath();
         ctx.strokeStyle = color;
         ctx.lineWidth = 2;
-        values.forEach((v, idx) => {
-          const x = xScale(times[idx]);
+        filteredValues.forEach((v, idx) => {
+          const x = xScale(filteredTimes[idx]);
           const y = yScale(v);
           if (idx === 0) {
             ctx.moveTo(x, y);
@@ -359,8 +374,8 @@ export function PerformanceStats({
         ctx.stroke();
 
         // 最新点
-        const latestX = xScale(times[times.length - 1]);
-        const latestY = yScale(values[values.length - 1]);
+        const latestX = xScale(filteredTimes[filteredTimes.length - 1]);
+        const latestY = yScale(filteredValues[filteredValues.length - 1]);
         ctx.fillStyle = color;
         ctx.beginPath();
         ctx.arc(latestX, latestY, 3, 0, Math.PI * 2);
