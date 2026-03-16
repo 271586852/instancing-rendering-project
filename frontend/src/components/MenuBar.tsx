@@ -137,6 +137,13 @@ function MenuBar({ cesiumViewerRef, performanceStatsEnabled, onTogglePerformance
     }
   };
 
+  const handleExportPerformanceComparisonChart = () => {
+    const exported = cesiumViewerRef.current?.exportPerformanceComparisonChart?.();
+    if (!exported) {
+      console.warn('Failed to start performance comparison export.');
+    }
+  };
+
   const safeNumber = (val: string, fallback = 0) => {
     const num = parseFloat(val);
     return Number.isNaN(num) ? fallback : num;
@@ -289,6 +296,7 @@ function MenuBar({ cesiumViewerRef, performanceStatsEnabled, onTogglePerformance
                 onTogglePerformanceStats={onTogglePerformanceStats}
                 onExportPerformanceStats={handleExportPerformanceStats}
                 onExportPerformanceChart={handleExportPerformanceChart}
+                onExportPerformanceComparisonChart={handleExportPerformanceComparisonChart}
               />
             )}
           </div>

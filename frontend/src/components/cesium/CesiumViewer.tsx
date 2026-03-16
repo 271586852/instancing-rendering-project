@@ -45,6 +45,7 @@ const CesiumViewer = forwardRef<CesiumViewerHandles, CesiumViewerProps>(
     const performanceExporterRef = useRef<{
       exportCsv: () => boolean;
       exportChart: () => boolean;
+      exportComparisonChart: () => boolean;
     } | null>(null);
     const debugOptionsRef = useRef<TilesetDebugOptions>({
       debugShowBoundingVolume: true,
@@ -76,6 +77,7 @@ const CesiumViewer = forwardRef<CesiumViewerHandles, CesiumViewerProps>(
           | {
               exportCsv: () => boolean;
               exportChart: () => boolean;
+              exportComparisonChart: () => boolean;
             }
           | null
       ) => {
@@ -344,6 +346,17 @@ const CesiumViewer = forwardRef<CesiumViewerHandles, CesiumViewerProps>(
           return exporter.exportChart();
         } catch (error) {
           console.error('Failed to export performance chart:', error);
+          return false;
+        }
+      },
+
+      exportPerformanceComparisonChart: () => {
+        const exporter = performanceExporterRef.current;
+        if (!exporter) return false;
+        try {
+          return exporter.exportComparisonChart();
+        } catch (error) {
+          console.error('Failed to export performance comparison chart:', error);
           return false;
         }
       },

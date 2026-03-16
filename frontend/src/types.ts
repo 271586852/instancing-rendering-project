@@ -58,6 +58,7 @@ export interface CesiumViewerHandles {
   setTilesetScreenSpaceError: (value: number) => void;
   exportPerformanceStats: () => boolean;
   exportPerformanceChart: () => boolean;
+  exportPerformanceComparisonChart: () => boolean;
 }
 
 // Cesium Viewer 的 ref 接口

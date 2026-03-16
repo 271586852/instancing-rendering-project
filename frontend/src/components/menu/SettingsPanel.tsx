@@ -31,6 +31,7 @@ interface SettingsPanelProps {
   onTogglePerformanceStats: (enabled: boolean) => void;
   onExportPerformanceStats: () => void;
   onExportPerformanceChart: () => void;
+  onExportPerformanceComparisonChart: () => void;
 }
 
 function SettingsPanel({
@@ -61,6 +62,7 @@ function SettingsPanel({
   onTogglePerformanceStats,
   onExportPerformanceStats,
   onExportPerformanceChart,
+  onExportPerformanceComparisonChart,
 }: SettingsPanelProps) {
   const handleBoundingVolumeChange = (event: ChangeEvent<HTMLInputElement>) => {
     onToggleBoundingVolume(event.target.checked);
@@ -123,6 +125,10 @@ function SettingsPanel({
 
   const handleExportPerformanceChart = () => {
     onExportPerformanceChart();
+  };
+
+  const handleExportPerformanceComparisonChart = () => {
+    onExportPerformanceComparisonChart();
   };
 
   return (
@@ -273,6 +279,13 @@ function SettingsPanel({
             disabled={!performanceStatsEnabled}
           >
             导出折线图
+          </button>
+          <button
+            className="export-button"
+            type="button"
+            onClick={handleExportPerformanceComparisonChart}
+          >
+            CSV Compare HTML
           </button>
         </div>
       </div>
