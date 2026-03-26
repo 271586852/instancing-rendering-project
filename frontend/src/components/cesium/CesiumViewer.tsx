@@ -1,4 +1,4 @@
-import { useRef, useState, useImperativeHandle, forwardRef, useCallback } from 'react';
+import { useRef, useState, useImperativeHandle, forwardRef, useCallback, useEffect } from 'react';
 import {
   Viewer,
   Cesium3DTileset,
@@ -7,6 +7,9 @@ import {
   HeadingPitchRoll,
   Quaternion,
   TranslationRotationScale,
+  Math as CesiumMath,
+  ScreenSpaceCameraController,
+  Clock,
 } from 'cesium';
 import { CesiumScene } from './CesiumScene';
 import { PerformanceStats } from './PerformanceStats';
@@ -16,6 +19,7 @@ import type {
   TilesetTransformOptions,
   TilesetDebugOptions,
   TilesetLayerInfo,
+  CameraPathStatus,
 } from '../../types';
 
 type NamedTileset = Cesium3DTileset & {
@@ -26,6 +30,27 @@ type NamedTileset = Cesium3DTileset & {
   debugShowRenderingStatistics?: boolean;
   debugShowMemoryUsage?: boolean;
 };
+
+type CameraPathPoint = {
+  timeSeconds: number;
+  position: Cartesian3;
+  heading: number;
+  pitch: number;
+  roll: number;
+};
+
+type CameraControllerState = {
+  enableInputs: boolean;
+  enableTranslate: boolean;
+  enableZoom: boolean;
+  enableRotate: boolean;
+  enableTilt: boolean;
+  enableLook: boolean;
+};
+
+const CAMERA_RECORD_SAMPLE_INTERVAL_MS = 120;
+const CAMERA_RECORD_MIN_DISTANCE_METERS = 0.2;
+const CAMERA_RECORD_MIN_ANGLE_RAD = (0.2 * Math.PI) / 180;
 
 interface CesiumViewerProps {
   showPerformanceStats?: boolean;
@@ -64,6 +89,318 @@ const CesiumViewer = forwardRef<CesiumViewerHandles, CesiumViewerProps>(
       rotation: { headingDeg: 0, pitchDeg: 0, rollDeg: 0 },
       scale: 1,
     });
+    const cameraPathRef = useRef<CameraPathPoint[]>([]);
+    const cameraRecordRef = useRef<{
+      isRecording: boolean;
+      startTimeMs: number;
+      lastSampleTimeMs: number;
+      listener: (() => void) | null;
+    }>({
+      isRecording: false,
+      startTimeMs: 0,
+      lastSampleTimeMs: 0,
+      listener: null,
+    });
+    const cameraPlaybackRef = useRef<{
+      isPlaying: boolean;
+      startTimeMs: number;
+      speedMultiplier: number;
+      segmentIndex: number;
+      listener: ((clock: Clock) => void) | null;
+      savedControllerState: CameraControllerState | null;
+    }>({
+      isPlaying: false,
+      startTimeMs: 0,
+      speedMultiplier: 1,
+      segmentIndex: 0,
+      listener: null,
+      savedControllerState: null,
+    });
+    const playbackScratchPositionRef = useRef(new Cartesian3());
+
+    const getCameraPathDuration = () => {
+      const path = cameraPathRef.current;
+      if (path.length < 2) return 0;
+      return path[path.length - 1].timeSeconds;
+    };
+
+    const getCameraPathStatus = (): CameraPathStatus => ({
+      isRecording: cameraRecordRef.current.isRecording,
+      isPlaying: cameraPlaybackRef.current.isPlaying,
+      pathPointCount: cameraPathRef.current.length,
+      durationSeconds: getCameraPathDuration(),
+    });
+
+    const removeCameraRecordListener = () => {
+      const viewerInstance = viewerRef.current;
+      const listener = cameraRecordRef.current.listener;
+      if (!listener || !viewerInstance || viewerInstance.isDestroyed()) {
+        cameraRecordRef.current.listener = null;
+        return;
+      }
+      viewerInstance.scene.postRender.removeEventListener(listener);
+      cameraRecordRef.current.listener = null;
+    };
+
+    const restoreCameraControllerState = () => {
+      const viewerInstance = viewerRef.current;
+      if (!viewerInstance || viewerInstance.isDestroyed()) return;
+      const controller = viewerInstance.scene.screenSpaceCameraController;
+      const saved = cameraPlaybackRef.current.savedControllerState;
+      if (!saved) return;
+      controller.enableInputs = saved.enableInputs;
+      controller.enableTranslate = saved.enableTranslate;
+      controller.enableZoom = saved.enableZoom;
+      controller.enableRotate = saved.enableRotate;
+      controller.enableTilt = saved.enableTilt;
+      controller.enableLook = saved.enableLook;
+      cameraPlaybackRef.current.savedControllerState = null;
+    };
+
+    const disableCameraController = (controller: ScreenSpaceCameraController) => {
+      cameraPlaybackRef.current.savedControllerState = {
+        enableInputs: controller.enableInputs,
+        enableTranslate: controller.enableTranslate,
+        enableZoom: controller.enableZoom,
+        enableRotate: controller.enableRotate,
+        enableTilt: controller.enableTilt,
+        enableLook: controller.enableLook,
+      };
+      controller.enableInputs = false;
+      controller.enableTranslate = false;
+      controller.enableZoom = false;
+      controller.enableRotate = false;
+      controller.enableTilt = false;
+      controller.enableLook = false;
+    };
+
+    const applyCameraPoint = (point: CameraPathPoint) => {
+      const viewerInstance = viewerRef.current;
+      if (!viewerInstance || viewerInstance.isDestroyed()) return;
+      viewerInstance.camera.setView({
+        destination: Cartesian3.clone(point.position),
+        orientation: {
+          heading: point.heading,
+          pitch: point.pitch,
+          roll: point.roll,
+        },
+      });
+    };
+
+    const interpolateAngle = (start: number, end: number, t: number) =>
+      start + CesiumMath.negativePiToPi(end - start) * t;
+
+    const removeCameraPlaybackListener = () => {
+      const viewerInstance = viewerRef.current;
+      const listener = cameraPlaybackRef.current.listener;
+      if (!listener || !viewerInstance || viewerInstance.isDestroyed()) {
+        cameraPlaybackRef.current.listener = null;
+        return;
+      }
+      viewerInstance.clock.onTick.removeEventListener(listener);
+      cameraPlaybackRef.current.listener = null;
+    };
+
+    const stopCameraPathPlaybackInternal = () => {
+      cameraPlaybackRef.current.isPlaying = false;
+      cameraPlaybackRef.current.segmentIndex = 0;
+      removeCameraPlaybackListener();
+      restoreCameraControllerState();
+    };
+
+    const captureCurrentCameraPoint = (timeSeconds: number): CameraPathPoint | null => {
+      const viewerInstance = viewerRef.current;
+      if (!viewerInstance || viewerInstance.isDestroyed()) return null;
+      const camera = viewerInstance.camera;
+      return {
+        timeSeconds,
+        position: Cartesian3.clone(camera.positionWC),
+        heading: camera.heading,
+        pitch: camera.pitch,
+        roll: camera.roll,
+      };
+    };
+
+    const appendCameraSample = (force = false) => {
+      const recordState = cameraRecordRef.current;
+      if (!recordState.isRecording) return;
+      const now = performance.now();
+      if (!force && now - recordState.lastSampleTimeMs < CAMERA_RECORD_SAMPLE_INTERVAL_MS) {
+        return;
+      }
+
+      const elapsedSeconds = (now - recordState.startTimeMs) / 1000;
+      const point = captureCurrentCameraPoint(elapsedSeconds);
+      if (!point) return;
+
+      const path = cameraPathRef.current;
+      const lastPoint = path[path.length - 1];
+      if (lastPoint) {
+        const positionDelta = Cartesian3.distance(lastPoint.position, point.position);
+        const headingDelta = Math.abs(CesiumMath.negativePiToPi(point.heading - lastPoint.heading));
+        const pitchDelta = Math.abs(CesiumMath.negativePiToPi(point.pitch - lastPoint.pitch));
+        const rollDelta = Math.abs(CesiumMath.negativePiToPi(point.roll - lastPoint.roll));
+        const hasMoved =
+          positionDelta >= CAMERA_RECORD_MIN_DISTANCE_METERS ||
+          headingDelta >= CAMERA_RECORD_MIN_ANGLE_RAD ||
+          pitchDelta >= CAMERA_RECORD_MIN_ANGLE_RAD ||
+          rollDelta >= CAMERA_RECORD_MIN_ANGLE_RAD;
+
+        if (!force && !hasMoved) {
+          return;
+        }
+        if (force && !hasMoved && elapsedSeconds - lastPoint.timeSeconds < 0.05) {
+          return;
+        }
+      }
+
+      path.push(point);
+      recordState.lastSampleTimeMs = now;
+    };
+
+    const stopCameraPathRecordingInternal = () => {
+      const recordState = cameraRecordRef.current;
+      if (!recordState.isRecording) return false;
+      appendCameraSample(true);
+      recordState.isRecording = false;
+      removeCameraRecordListener();
+      return cameraPathRef.current.length >= 2;
+    };
+
+    const startCameraPathRecordingInternal = () => {
+      const viewerInstance = viewerRef.current;
+      if (!viewerInstance || viewerInstance.isDestroyed()) return false;
+      if (cameraRecordRef.current.isRecording || cameraPlaybackRef.current.isPlaying) {
+        return false;
+      }
+
+      cameraPathRef.current = [];
+      cameraRecordRef.current.isRecording = true;
+      cameraRecordRef.current.startTimeMs = performance.now();
+      cameraRecordRef.current.lastSampleTimeMs = 0;
+      appendCameraSample(true);
+
+      const listener = () => {
+        appendCameraSample(false);
+      };
+      cameraRecordRef.current.listener = listener;
+      viewerInstance.scene.postRender.addEventListener(listener);
+      return true;
+    };
+
+    const startCameraPathPlaybackInternal = (speedMultiplier = 1) => {
+      const viewerInstance = viewerRef.current;
+      if (!viewerInstance || viewerInstance.isDestroyed()) return false;
+      if (cameraRecordRef.current.isRecording || cameraPlaybackRef.current.isPlaying) {
+        return false;
+      }
+
+      const path = cameraPathRef.current;
+      if (path.length < 2) return false;
+      const playbackSpeed = Number.isFinite(speedMultiplier) && speedMultiplier > 0
+        ? speedMultiplier
+        : 1;
+
+      cameraPlaybackRef.current.isPlaying = true;
+      cameraPlaybackRef.current.startTimeMs = performance.now();
+      cameraPlaybackRef.current.speedMultiplier = playbackSpeed;
+      cameraPlaybackRef.current.segmentIndex = 0;
+      disableCameraController(viewerInstance.scene.screenSpaceCameraController);
+      applyCameraPoint(path[0]);
+
+      const listener = () => {
+        if (!cameraPlaybackRef.current.isPlaying) return;
+        const currentPath = cameraPathRef.current;
+        if (currentPath.length < 2) {
+          stopCameraPathPlaybackInternal();
+          return;
+        }
+
+        const playbackState = cameraPlaybackRef.current;
+        const elapsedSeconds =
+          ((performance.now() - playbackState.startTimeMs) / 1000) *
+          playbackState.speedMultiplier;
+        const finalPoint = currentPath[currentPath.length - 1];
+
+        if (elapsedSeconds >= finalPoint.timeSeconds) {
+          applyCameraPoint(finalPoint);
+          stopCameraPathPlaybackInternal();
+          return;
+        }
+
+        let segmentIndex = playbackState.segmentIndex;
+        while (
+          segmentIndex < currentPath.length - 2 &&
+          elapsedSeconds > currentPath[segmentIndex + 1].timeSeconds
+        ) {
+          segmentIndex += 1;
+        }
+        playbackState.segmentIndex = segmentIndex;
+
+        const startPoint = currentPath[segmentIndex];
+        const endPoint = currentPath[segmentIndex + 1];
+        const segmentDuration = Math.max(0.0001, endPoint.timeSeconds - startPoint.timeSeconds);
+        const t = CesiumMath.clamp(
+          (elapsedSeconds - startPoint.timeSeconds) / segmentDuration,
+          0,
+          1
+        );
+
+        const destination = Cartesian3.lerp(
+          startPoint.position,
+          endPoint.position,
+          t,
+          playbackScratchPositionRef.current
+        );
+
+        viewerInstance.camera.setView({
+          destination,
+          orientation: {
+            heading: interpolateAngle(startPoint.heading, endPoint.heading, t),
+            pitch: interpolateAngle(startPoint.pitch, endPoint.pitch, t),
+            roll: interpolateAngle(startPoint.roll, endPoint.roll, t),
+          },
+        });
+      };
+
+      cameraPlaybackRef.current.listener = listener;
+      viewerInstance.clock.onTick.addEventListener(listener);
+      return true;
+    };
+
+    useEffect(() => {
+      return () => {
+        const viewerInstance = viewerRef.current;
+
+        cameraRecordRef.current.isRecording = false;
+        const recordListener = cameraRecordRef.current.listener;
+        if (recordListener && viewerInstance && !viewerInstance.isDestroyed()) {
+          viewerInstance.scene.postRender.removeEventListener(recordListener);
+        }
+        cameraRecordRef.current.listener = null;
+
+        cameraPlaybackRef.current.isPlaying = false;
+        const playbackListener = cameraPlaybackRef.current.listener;
+        if (playbackListener && viewerInstance && !viewerInstance.isDestroyed()) {
+          viewerInstance.clock.onTick.removeEventListener(playbackListener);
+        }
+        cameraPlaybackRef.current.listener = null;
+
+        if (viewerInstance && !viewerInstance.isDestroyed()) {
+          const controller = viewerInstance.scene.screenSpaceCameraController;
+          const saved = cameraPlaybackRef.current.savedControllerState;
+          if (saved) {
+            controller.enableInputs = saved.enableInputs;
+            controller.enableTranslate = saved.enableTranslate;
+            controller.enableZoom = saved.enableZoom;
+            controller.enableRotate = saved.enableRotate;
+            controller.enableTilt = saved.enableTilt;
+            controller.enableLook = saved.enableLook;
+          }
+        }
+        cameraPlaybackRef.current.savedControllerState = null;
+      };
+    }, []);
 
     const handleViewerReady = useCallback((viewerInstance: Viewer) => {
       viewerRef.current = viewerInstance;
@@ -360,6 +697,29 @@ const CesiumViewer = forwardRef<CesiumViewerHandles, CesiumViewerProps>(
           return false;
         }
       },
+
+      startCameraPathRecording: () => startCameraPathRecordingInternal(),
+
+      stopCameraPathRecording: () => stopCameraPathRecordingInternal(),
+
+      startCameraPathPlayback: (speedMultiplier = 1) =>
+        startCameraPathPlaybackInternal(speedMultiplier),
+
+      stopCameraPathPlayback: () => {
+        stopCameraPathPlaybackInternal();
+      },
+
+      clearCameraPath: () => {
+        if (cameraRecordRef.current.isRecording) {
+          stopCameraPathRecordingInternal();
+        }
+        if (cameraPlaybackRef.current.isPlaying) {
+          stopCameraPathPlaybackInternal();
+        }
+        cameraPathRef.current = [];
+      },
+
+      getCameraPathStatus: () => getCameraPathStatus(),
     }));
 
     return (

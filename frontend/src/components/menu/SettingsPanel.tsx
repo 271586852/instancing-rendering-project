@@ -32,6 +32,15 @@ interface SettingsPanelProps {
   onExportPerformanceStats: () => void;
   onExportPerformanceChart: () => void;
   onExportPerformanceComparisonChart: () => void;
+  isCameraPathRecording: boolean;
+  isCameraPathPlaying: boolean;
+  cameraPathPointCount: number;
+  cameraPathDurationSeconds: number;
+  onStartCameraPathRecording: () => void;
+  onStopCameraPathRecording: () => void;
+  onStartCameraPathPlayback: () => void;
+  onStopCameraPathPlayback: () => void;
+  onClearCameraPath: () => void;
 }
 
 function SettingsPanel({
@@ -63,6 +72,15 @@ function SettingsPanel({
   onExportPerformanceStats,
   onExportPerformanceChart,
   onExportPerformanceComparisonChart,
+  isCameraPathRecording,
+  isCameraPathPlaying,
+  cameraPathPointCount,
+  cameraPathDurationSeconds,
+  onStartCameraPathRecording,
+  onStopCameraPathRecording,
+  onStartCameraPathPlayback,
+  onStopCameraPathPlayback,
+  onClearCameraPath,
 }: SettingsPanelProps) {
   const handleBoundingVolumeChange = (event: ChangeEvent<HTMLInputElement>) => {
     onToggleBoundingVolume(event.target.checked);
@@ -119,28 +137,16 @@ function SettingsPanel({
     onTogglePerformanceStats(event.target.checked);
   };
 
-  const handleExportPerformanceStats = () => {
-    onExportPerformanceStats();
-  };
-
-  const handleExportPerformanceChart = () => {
-    onExportPerformanceChart();
-  };
-
-  const handleExportPerformanceComparisonChart = () => {
-    onExportPerformanceComparisonChart();
-  };
-
   return (
     <div className="settings-panel">
       <div className="settings-header">
-        <h3>调试选项</h3>
-        <p className="settings-description">对已加载及后续加载的 3D Tiles 生效。</p>
+        <h3>Viewer Settings</h3>
+        <p className="settings-description">Apply to loaded and newly loaded 3D Tiles.</p>
       </div>
 
       <div className="setting-item">
         <div className="setting-text">
-          <div className="setting-title">显示包围盒</div>
+          <div className="setting-title">Show Bounding Volume</div>
           <div className="setting-subtitle">tileset.debugShowBoundingVolume</div>
         </div>
         <label className="toggle-switch">
@@ -155,7 +161,7 @@ function SettingsPanel({
 
       <div className="setting-item">
         <div className="setting-text">
-          <div className="setting-title">按瓦片上色</div>
+          <div className="setting-title">Colorize Tiles</div>
           <div className="setting-subtitle">tileset.debugColorizeTiles</div>
         </div>
         <label className="toggle-switch">
@@ -170,7 +176,7 @@ function SettingsPanel({
 
       <div className="setting-item">
         <div className="setting-text">
-          <div className="setting-title">显示几何误差</div>
+          <div className="setting-title">Show Geometric Error</div>
           <div className="setting-subtitle">tileset.debugShowGeometricError</div>
         </div>
         <label className="toggle-switch">
@@ -185,7 +191,7 @@ function SettingsPanel({
 
       <div className="setting-item">
         <div className="setting-text">
-          <div className="setting-title">渲染统计</div>
+          <div className="setting-title">Rendering Statistics</div>
           <div className="setting-subtitle">tileset.debugShowRenderingStatistics</div>
         </div>
         <label className="toggle-switch">
@@ -200,7 +206,7 @@ function SettingsPanel({
 
       <div className="setting-item">
         <div className="setting-text">
-          <div className="setting-title">内存统计</div>
+          <div className="setting-title">Memory Statistics</div>
           <div className="setting-subtitle">tileset.debugShowMemoryUsage</div>
         </div>
         <label className="toggle-switch">
@@ -215,7 +221,7 @@ function SettingsPanel({
 
       <div className="setting-item setting-item-column">
         <div className="setting-text">
-          <div className="setting-title">LOD 严格度</div>
+          <div className="setting-title">LOD Strictness</div>
           <div className="setting-subtitle">tileset.maximumScreenSpaceError</div>
         </div>
         <div className="slider-row">
@@ -239,14 +245,14 @@ function SettingsPanel({
           />
         </div>
         <div className="setting-subtitle">
-          数值越小越严格（更精细），越大越粗略（更省性能）
+          Smaller values are stricter and more detailed. Larger values are faster.
         </div>
       </div>
 
       <div className="setting-item">
         <div className="setting-text">
-          <div className="setting-title">性能面板</div>
-          <div className="setting-subtitle">显示 FPS / FrameTime / DrawCalls 折线</div>
+          <div className="setting-title">Performance Panel</div>
+          <div className="setting-subtitle">Show FPS / FrameTime / DrawCalls charts</div>
         </div>
         <label className="toggle-switch">
           <input
@@ -260,94 +266,128 @@ function SettingsPanel({
 
       <div className="setting-item">
         <div className="setting-text">
-          <div className="setting-title">导出性能数据</div>
-          <div className="setting-subtitle">最近 60 秒：FrameTime / FPS / DrawCalls / Triangles</div>
+          <div className="setting-title">Export Performance Data</div>
+          <div className="setting-subtitle">Last 60s: FrameTime / FPS / DrawCalls / Triangles</div>
         </div>
         <div className="export-button-row">
           <button
             className="export-button"
             type="button"
-            onClick={handleExportPerformanceStats}
+            onClick={onExportPerformanceStats}
             disabled={!performanceStatsEnabled}
           >
-            导出CSV
+            Export CSV
           </button>
           <button
             className="export-button"
             type="button"
-            onClick={handleExportPerformanceChart}
+            onClick={onExportPerformanceChart}
             disabled={!performanceStatsEnabled}
           >
-            导出折线图
+            Export Chart
           </button>
           <button
             className="export-button"
             type="button"
-            onClick={handleExportPerformanceComparisonChart}
+            onClick={onExportPerformanceComparisonChart}
           >
             CSV Compare HTML
           </button>
         </div>
       </div>
 
+      <div className="setting-item setting-item-column">
+        <div className="setting-text">
+          <div className="setting-title">Camera Roaming Path</div>
+          <div className="setting-subtitle">
+            Points: {cameraPathPointCount} | Duration: {cameraPathDurationSeconds.toFixed(1)}s
+          </div>
+          <div className="setting-subtitle">
+            Status: {isCameraPathRecording ? 'Recording' : isCameraPathPlaying ? 'Playing' : 'Idle'}
+          </div>
+        </div>
+        <div className="export-button-row camera-path-button-row">
+          <button
+            className="export-button"
+            type="button"
+            onClick={onStartCameraPathRecording}
+            disabled={isCameraPathRecording || isCameraPathPlaying}
+          >
+            Start Record
+          </button>
+          <button
+            className="export-button"
+            type="button"
+            onClick={onStopCameraPathRecording}
+            disabled={!isCameraPathRecording}
+          >
+            Stop & Save
+          </button>
+          <button
+            className="export-button"
+            type="button"
+            onClick={onStartCameraPathPlayback}
+            disabled={isCameraPathRecording || isCameraPathPlaying || cameraPathPointCount < 2}
+          >
+            Start Roam
+          </button>
+          <button
+            className="export-button"
+            type="button"
+            onClick={onStopCameraPathPlayback}
+            disabled={!isCameraPathPlaying}
+          >
+            Stop Roam
+          </button>
+          <button
+            className="export-button"
+            type="button"
+            onClick={onClearCameraPath}
+            disabled={isCameraPathRecording || isCameraPathPlaying || cameraPathPointCount === 0}
+          >
+            Clear Path
+          </button>
+        </div>
+      </div>
+
       <div className="setting-item">
         <div className="setting-text">
-          <div className="setting-title">显示地球表面</div>
+          <div className="setting-title">Show Globe Surface</div>
           <div className="setting-subtitle">viewer.scene.globe.show</div>
         </div>
         <label className="toggle-switch">
-          <input
-            type="checkbox"
-            checked={showGlobe}
-            onChange={handleShowGlobeChange}
-          />
+          <input type="checkbox" checked={showGlobe} onChange={handleShowGlobeChange} />
           <span className="toggle-slider" />
         </label>
       </div>
 
       <div className="setting-item">
         <div className="setting-text">
-          <div className="setting-title">地形深度测试</div>
+          <div className="setting-title">Depth Test Against Terrain</div>
           <div className="setting-subtitle">viewer.scene.globe.depthTestAgainstTerrain</div>
         </div>
         <label className="toggle-switch">
-          <input
-            type="checkbox"
-            checked={depthTestAgainstTerrain}
-            onChange={handleDepthTestChange}
-          />
+          <input type="checkbox" checked={depthTestAgainstTerrain} onChange={handleDepthTestChange} />
           <span className="toggle-slider" />
         </label>
       </div>
 
       <div className="setting-item">
         <div className="setting-text">
-          <div className="setting-title">位置偏移 (米)</div>
-          <div className="setting-subtitle">3D Tiles 模型平移</div>
+          <div className="setting-title">Translation (m)</div>
+          <div className="setting-subtitle">3D Tiles model translation</div>
           <div className="translation-inputs">
             <label>
               X
-              <input
-                type="number"
-                value={translation.x}
-                onChange={handleTranslationInput('x')}
-              />
+              <input type="number" value={translation.x} onChange={handleTranslationInput('x')} />
             </label>
             <label>
               Y
-              <input
-                type="number"
-                value={translation.y}
-                onChange={handleTranslationInput('y')}
-              />
+              <input type="number" value={translation.y} onChange={handleTranslationInput('y')} />
             </label>
             <label>
               Z
-              <input
-                type="number"
-                value={translation.z}
-                onChange={handleTranslationInput('z')}
-              />
+              <input type="number" value={translation.z} onChange={handleTranslationInput('z')} />
             </label>
           </div>
         </div>
@@ -355,7 +395,7 @@ function SettingsPanel({
 
       <div className="setting-item">
         <div className="setting-text">
-          <div className="setting-title">旋转 (度)</div>
+          <div className="setting-title">Rotation (deg)</div>
           <div className="setting-subtitle">Heading / Pitch / Roll</div>
           <div className="translation-inputs">
             <label>
@@ -388,8 +428,8 @@ function SettingsPanel({
 
       <div className="setting-item">
         <div className="setting-text">
-          <div className="setting-title">缩放</div>
-          <div className="setting-subtitle">均匀缩放系数</div>
+          <div className="setting-title">Scale</div>
+          <div className="setting-subtitle">Uniform scaling factor</div>
           <div className="translation-inputs">
             <label>
               Scale
@@ -401,7 +441,7 @@ function SettingsPanel({
 
       <div className="transform-apply-row">
         <button className="transform-apply-btn" onClick={onApplyTransform}>
-          应用变换
+          Apply Transform
         </button>
       </div>
     </div>
@@ -409,5 +449,3 @@ function SettingsPanel({
 }
 
 export default SettingsPanel;
-
-

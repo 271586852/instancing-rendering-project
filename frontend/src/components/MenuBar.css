@@ -393,6 +393,10 @@
   gap: 8px;
 }
 
+.camera-path-button-row {
+  flex-wrap: wrap;
+}
+
 .translation-inputs {
   display: flex;
   gap: 8px;

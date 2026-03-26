@@ -1,11 +1,9 @@
 // frontend/src/types.ts
 
-// 分析数据接口
 export interface AnalysisData {
   [key: string]: string;
 }
 
-// 3D Tiles 图层信息接口
 export interface TilesetLayerInfo {
   id: string;
   name: string;
@@ -13,7 +11,6 @@ export interface TilesetLayerInfo {
   show: boolean;
 }
 
-// Tileset 调试开关
 export interface TilesetDebugOptions {
   debugShowBoundingVolume?: boolean;
   debugColorizeTiles?: boolean;
@@ -22,13 +19,11 @@ export interface TilesetDebugOptions {
   debugShowMemoryUsage?: boolean;
 }
 
-// Globe 相关开关
 export interface GlobeOptions {
   showGlobe?: boolean;
   depthTestAgainstTerrain?: boolean;
 }
 
-// Tileset 变换配置
 export interface TilesetTransformOptions {
   translation?: {
     x: number;
@@ -43,7 +38,13 @@ export interface TilesetTransformOptions {
   scale?: number;
 }
 
-// Cesium Viewer Handles 接口
+export interface CameraPathStatus {
+  isRecording: boolean;
+  isPlaying: boolean;
+  pathPointCount: number;
+  durationSeconds: number;
+}
+
 export interface CesiumViewerHandles {
   loadTileset: (url: string) => Promise<void>;
   getTilesetLayers: () => TilesetLayerInfo[];
@@ -59,12 +60,16 @@ export interface CesiumViewerHandles {
   exportPerformanceStats: () => boolean;
   exportPerformanceChart: () => boolean;
   exportPerformanceComparisonChart: () => boolean;
+  startCameraPathRecording: () => boolean;
+  stopCameraPathRecording: () => boolean;
+  startCameraPathPlayback: (speedMultiplier?: number) => boolean;
+  stopCameraPathPlayback: () => void;
+  clearCameraPath: () => void;
+  getCameraPathStatus: () => CameraPathStatus;
 }
 
-// Cesium Viewer 的 ref 接口
 export type CesiumViewerRef = CesiumViewerHandles;
 
-// 文件上传组件的 Props
 export interface FileUploadProps {
   onUploadSuccess: (url: string, data: AnalysisData | null) => void;
   setInfoMessage: (message: string | null) => void;
@@ -72,7 +77,6 @@ export interface FileUploadProps {
   setIsLoading: (isLoading: boolean) => void;
 }
 
-// 错误响应数据接口
 export interface ErrorResponseData {
   error: string;
   logs?: {
@@ -81,7 +85,6 @@ export interface ErrorResponseData {
   };
 }
 
-// 处理请求的参数接口
 export interface ProcessRequestParams {
   model: File;
   tolerance: number;
@@ -90,9 +93,7 @@ export interface ProcessRequestParams {
   meshSegmentation?: boolean;
 }
 
-// 处理响应接口
 export interface ProcessResponse {
   tilesetUrl: string;
   analysis: AnalysisData | null;
 }
-

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { CesiumViewerRef } from '../types';
+import type { CameraPathStatus, CesiumViewerRef } from '../types';
 import InstancingTool from './menu/InstancingTool';
 import TilesLoader from './menu/TilesLoader';
 import SettingsPanel from './menu/SettingsPanel';
@@ -38,6 +38,12 @@ function MenuBar({ cesiumViewerRef, performanceStatsEnabled, onTogglePerformance
     rollDeg: '0',
   });
   const [scaleInput, setScaleInput] = useState('1');
+  const [cameraPathStatus, setCameraPathStatus] = useState<CameraPathStatus>({
+    isRecording: false,
+    isPlaying: false,
+    pathPointCount: 0,
+    durationSeconds: 0,
+  });
 
   const handleMenuClick = (menu: MenuItem) => {
     if (activeMenu === menu) {
@@ -144,6 +150,47 @@ function MenuBar({ cesiumViewerRef, performanceStatsEnabled, onTogglePerformance
     }
   };
 
+  const syncCameraPathStatus = () => {
+    const status = cesiumViewerRef.current?.getCameraPathStatus?.();
+    if (status) {
+      setCameraPathStatus(status);
+    }
+  };
+
+  const handleStartCameraPathRecording = () => {
+    const started = cesiumViewerRef.current?.startCameraPathRecording?.();
+    if (!started) {
+      console.warn('Failed to start camera path recording.');
+    }
+    syncCameraPathStatus();
+  };
+
+  const handleStopCameraPathRecording = () => {
+    const saved = cesiumViewerRef.current?.stopCameraPathRecording?.();
+    if (!saved) {
+      console.warn('Camera path has not enough points to roam.');
+    }
+    syncCameraPathStatus();
+  };
+
+  const handleStartCameraPathPlayback = () => {
+    const started = cesiumViewerRef.current?.startCameraPathPlayback?.();
+    if (!started) {
+      console.warn('Failed to start camera path roaming.');
+    }
+    syncCameraPathStatus();
+  };
+
+  const handleStopCameraPathPlayback = () => {
+    cesiumViewerRef.current?.stopCameraPathPlayback?.();
+    syncCameraPathStatus();
+  };
+
+  const handleClearCameraPath = () => {
+    cesiumViewerRef.current?.clearCameraPath?.();
+    syncCameraPathStatus();
+  };
+
   const safeNumber = (val: string, fallback = 0) => {
     const num = parseFloat(val);
     return Number.isNaN(num) ? fallback : num;
@@ -201,6 +248,16 @@ function MenuBar({ cesiumViewerRef, performanceStatsEnabled, onTogglePerformance
   useEffect(() => {
     cesiumViewerRef.current?.setTilesetScreenSpaceError(screenSpaceError);
   }, [screenSpaceError, cesiumViewerRef]);
+
+  useEffect(() => {
+    syncCameraPathStatus();
+    const timer = window.setInterval(() => {
+      syncCameraPathStatus();
+    }, 300);
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [cesiumViewerRef]);
 
   const getPanelTitle = () => {
     if (activeMenu === 'instancing') return 'Instancing Tool';
@@ -297,6 +354,15 @@ function MenuBar({ cesiumViewerRef, performanceStatsEnabled, onTogglePerformance
                 onExportPerformanceStats={handleExportPerformanceStats}
                 onExportPerformanceChart={handleExportPerformanceChart}
                 onExportPerformanceComparisonChart={handleExportPerformanceComparisonChart}
+                isCameraPathRecording={cameraPathStatus.isRecording}
+                isCameraPathPlaying={cameraPathStatus.isPlaying}
+                cameraPathPointCount={cameraPathStatus.pathPointCount}
+                cameraPathDurationSeconds={cameraPathStatus.durationSeconds}
+                onStartCameraPathRecording={handleStartCameraPathRecording}
+                onStopCameraPathRecording={handleStopCameraPathRecording}
+                onStartCameraPathPlayback={handleStartCameraPathPlayback}
+                onStopCameraPathPlayback={handleStopCameraPathPlayback}
+                onClearCameraPath={handleClearCameraPath}
               />
             )}
           </div>
